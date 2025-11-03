@@ -20,6 +20,7 @@ class UserModel(BaseModel):
     username: Mapped[str] = mapped_column(String(70), nullable=True)
     language: Mapped[str] = mapped_column(String(10), server_default="en")
     status: Mapped[int] = mapped_column(Integer, server_default="1")
+    current_mode: Mapped[str] = mapped_column(String(20), nullable=True)
 
     profile: Mapped["ProfileModel"] = relationship(  # type: ignore
         "ProfileModel", uselist=False, back_populates="user"

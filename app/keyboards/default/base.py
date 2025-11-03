@@ -46,3 +46,7 @@ match_kb: ReplyKeyboardMarkup = kb_gen(
 return_to_menu_kb: ReplyKeyboardMarkup = kb_gen(
     ["↩️"],
 )
+
+mode_confirm_kb: ReplyKeyboardMarkup = lambda: kb_gen(
+    ["✅ Yes, Switch", "❌ No, Stay"],
+)

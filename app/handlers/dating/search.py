@@ -22,13 +22,16 @@ from database.services.search import search_profiles
 async def _search_command(
     message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession
 ) -> None:
-    """Бот подбирает анкеты, соответствующие предпочтениям пользователя, и предлагает их"""
+    """Bot finds profiles matching user preferences and suggests them"""
 
     await message.answer(mt.SEARCH, reply_markup=search_kb)
 
-    if profile_list := await search_profiles(session, user.profile):
+    # Get user's current mode for filtering
+    user_mode = await User.get_mode(session, user.id)
+    
+    if profile_list := await search_profiles(session, user.profile, user_mode=user_mode):
         await state.set_state(Search.search)
-        await state.update_data(ids=profile_list)
+        await state.update_data(ids=profile_list, current_mode=user_mode)
 
         another_profile = await Profile.get(session, profile_list[0])
         await send_profile_with_dist(user=user, profile=another_profile, session=session)
@@ -46,10 +49,10 @@ async def _search_profile(
     message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession
 ) -> None:
     """
-    Пользователь может взаимодействовать с анкетами, предложенными ботом,
-    ставя лайк или дизлайк.
-    Также доступна функция жалобы на анкеты, содержащие нежелательный контент.
-    Все жалобы отправляются в модераторскую группу, если она указана в настройках.
+    User can interact with profiles suggested by bot,
+    by liking or disliking.
+    Complaint feature available for profiles with unwanted content.
+    All complaints sent to moderator group if specified in settings.
     """
     data = await state.get_data()
     profile_list = data.get("ids", [])
@@ -78,7 +81,7 @@ async def _search_profile(
 async def _search_profile_compleint(
     message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession
 ) -> None:
-    """Пользователь может отправить жалобу на анкету, если она содержит нежелательный контент."""
+    """User can send complaint about profile if it contains unwanted content."""
     data = await state.get_data()
     profile_list = data.get("ids", [])
     another_user = await User.get_with_profile(session, profile_list[0])
@@ -101,7 +104,7 @@ async def _search_profile_compleint(
 async def _search_profile_mailing_(
     message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession
 ) -> None:
-    """Ловит сообщение которые пользователь отправляет в ответ на анкету"""
+    """Catches messages that user sends in response to profile"""
     data = await state.get_data()
     profile_list = data.get("ids", [])
     another_user = await User.get_with_profile(session, profile_list[0])
@@ -124,7 +127,7 @@ async def _search_profile_mailing_(
 
 @dating_router.message(StateFilter(Search.message))
 async def _search_profile_mailing_error(message: types.Message) -> None:
-    """Ловит ошибку, если пользователь отправляет сообщение не по шаблону"""
+    """Catches error if user sends message not matching template"""
     await message.answer(mt.INVALID_MAILING_TO_USER)
 
 

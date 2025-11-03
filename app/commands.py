@@ -9,6 +9,9 @@ def get_default_commands() -> list:
         BotCommand(command="/help", description="Help"),
         BotCommand(command="/lang", description="Change language"),
         BotCommand(command="/channel", description="Telegram channel"),
+        BotCommand(command="/fun", description="Match for fun & casual meetups"),
+        BotCommand(command="/dates", description="Match for romantic dates"),
+        BotCommand(command="/friends", description="Match for friendship & connections"),
     ]
 
     return commands

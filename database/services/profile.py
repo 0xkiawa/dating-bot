@@ -25,8 +25,11 @@ class Profile(BaseService):
         logger.log("DATABASE", f"{id}: удалил профиль")
 
     @classmethod
-    async def create_or_update(cls, session: AsyncSession, **kwargs):
-        """Создает профиль пользователя, если профиль есть - обновляет его"""
+    async def create_or_update(cls, session: AsyncSession, **kwargs) -> "Profile":
+        # Ensure is_active is stored as string 'True'/'False'
+        if "is_active" in kwargs:
+            kwargs["is_active"] = str(kwargs["is_active"])
+
         profile_id = kwargs.pop("id")  # Извлекаем id профиля
         photo_url = kwargs.pop(
             "photo", None

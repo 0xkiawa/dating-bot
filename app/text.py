@@ -1,12 +1,12 @@
 from loader import _
 
 """
-Текст вынес в отдельный файл для удобного редактирования
+Text moved to separate file for easy editing
 """
 
 
 class MessageText:
-    # Приветствие и информация
+    # Welcome and information
     @property
     def WELCOME(self):
         return _("""
@@ -53,7 +53,53 @@ class MessageText:
     def UNKNOWN_COMMAND(self):
         return _("Неизвестная команда. Если заблудился, напиши /start.")
 
-    # Создание и редактирование профиля
+    # Mood mode messages
+    @property
+    def MODE_FUN_ACTIVATED(self):
+        return _("""
+🎉 <b>Fun Mode Activated!</b>
+
+You're now browsing profiles of people looking for casual fun and exciting meetups. Ready to see who's vibing with you today?
+""")
+
+    @property
+    def MODE_DATES_ACTIVATED(self):
+        return _("""
+❤️ <b>Dates Mode Activated!</b>
+
+You're now browsing profiles of people looking for meaningful romantic connections. Let's find your match!
+""")
+
+    @property
+    def MODE_FRIENDS_ACTIVATED(self):
+        return _("""
+🤝 <b>Friends Mode Activated!</b>
+
+You're now browsing profiles of people looking for genuine friendships and connections. Let's build your circle!
+""")
+
+    def MODE_SWITCH_CONFIRM(self, current_mode: str, new_mode: str):
+        mode_icons = {'fun': '🍆👅💦', 'dates': '❤️', 'friends': '🤝'}
+        mode_names = {'fun': 'Fun', 'dates': 'Dates', 'friends': 'Friends'}
+        
+        return _("""
+{new_icon} <b>Switch to {new_name} Mode?</b>
+
+You're currently in {current_name} mode. Switching to {new_name} will show you people looking for {new_description} instead.
+
+Do you want to leave {current_name} mode and enter {new_name} mode?
+""").format(
+            new_icon=mode_icons.get(new_mode, ''),
+            new_name=mode_names.get(new_mode, ''),
+            current_name=mode_names.get(current_mode, ''),
+            new_description=new_mode
+        )
+
+    @property
+    def MODE_SWITCH_CANCELLED(self):
+        return _("Okay, staying in current mode! 👍")
+
+    # Profile creation and editing
     @property
     def GENDER(self):
         return _("Укажи, свой пол: 👤")
@@ -128,12 +174,6 @@ class MessageText:
             locale=language,
         )
 
-    # @property
-    # def LIKE_ACCEPT_ALERT(self):
-    #     return _(
-    #         "На ваш лайк ответили взаимно, надеюсь вы хорошо проведете время ;) <a href='{}'>{}</a>",
-    #     )
-
     @property
     def MESSAGE_TO_YOU(self):
         return _("Сообщение для тебя:\n{}")
@@ -156,7 +196,7 @@ class MessageText:
     def CANNCELED_LETTER(self):
         return _("Хорошо, ничего не буду отправлять.")
 
-    # Ошибки и проверки
+    # Errors and validation
     @property
     def INVALID_RESPONSE(self):
         return _("Некорректный ответ. Пожалуйста, выбери на клавиатуре или напиши правильно. 📝")
@@ -189,7 +229,7 @@ class MessageText:
     def CHANNEL(self):
         return _("Наш канал:\n{}")
 
-    # Язык
+    # Language
     @property
     def CHANGE_LANG(self):
         return _("Выбери язык бота, на который хочешь переключиться: 🌐")
@@ -197,7 +237,7 @@ class MessageText:
     def DONE_CHANGE_LANG(self, language: str):
         return _("Язык бота изменён! ✅", locale=language)
 
-    # Жалобы и модерация
+    # Complaints and moderation
     @property
     def COMPLAINT(self):
         return _("""
@@ -222,7 +262,7 @@ The reason: {}
     def REPORT_TO_PROFILE(self):
         return _("✅ Жалоба успешно отправлена на рассмотрение!")
 
-    # Редактирование фотографий
+    # Photo editing
     @property
     def PHOTO_EDIT_START(self):
         return _("Загрузи новые фото! Можно отправить до 3 фотографий 📸")
@@ -262,7 +302,6 @@ The reason: {}
     def PHOTO_ALL_UPLOADED(self, count: int = 3):
         return _("Все {} фото загружены!").format(count)
 
-    # Дополнительные тексты для редактирования фото
     @property
     def PHOTO_LIMIT_REACHED(self):
         return _("❌ Максимум 3 фото! Нажмите 'Это все, сохранить фото' для сохранения.")
