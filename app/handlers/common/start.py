@@ -18,6 +18,9 @@ async def start_command(message: types.Message, user: UserModel, state: FSMConte
     """
     Команда /start запускает бота и возвращает пользователя в начальное меню.
     Сброс состояния помогает, если пользователь запутался — всегда можно начать сначала.
+    
+    UPDATED: Main menu now only shows "My Profile" and "Invite Friends"
+    Browse and Inbox are now only accessible from mode menus (/fun, /dates, /friends)
     """
     await state.clear()
 

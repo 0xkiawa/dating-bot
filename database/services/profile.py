@@ -13,16 +13,16 @@ class Profile(BaseService):
 
     @staticmethod
     async def get(session: AsyncSession, id: int):
-        """Возвращает профиль пользователя"""
+        """Returns user profile"""
         return await session.get(ProfileModel, id)
 
     @staticmethod
     async def delete(session: AsyncSession, id: int):
-        """Удаляет профиль пользователя"""
+        """Deletes user profile"""
         stmt = delete(ProfileModel).where(ProfileModel.id == id)
         await session.execute(stmt)
         await session.commit()
-        logger.log("DATABASE", f"{id}: удалил профиль")
+        logger.log("DATABASE", f"{id}: deleted profile")
 
     @classmethod
     async def create_or_update(cls, session: AsyncSession, **kwargs) -> "Profile":
@@ -30,32 +30,32 @@ class Profile(BaseService):
         if "is_active" in kwargs:
             kwargs["is_active"] = str(kwargs["is_active"])
 
-        profile_id = kwargs.pop("id")  # Извлекаем id профиля
+        profile_id = kwargs.pop("id")  # Extract profile id
         photo_url = kwargs.pop(
             "photo", None
-        )  # Извлекаем photo, если есть (для обратной совместимости)
-        photos = kwargs.pop("photos", None)  # Извлекаем список фото
+        )  # Extract photo if exists (backwards compatibility)
+        photos = kwargs.pop("photos", None)  # Extract photo list
 
         obj = await cls.get_by_id(session, profile_id)
         is_new = False
 
         if obj:
-            # Обновляем существующий профиль
+            # Update existing profile
             for key, value in kwargs.items():
                 setattr(obj, key, value)
             await session.commit()
         else:
-            # Создаем новый профиль
+            # Create new profile
             obj = await cls.create(session, id=profile_id, **kwargs)
             is_new = True
-            logger.log("DATABASE", f"{profile_id}: создал анкету")
+            logger.log("DATABASE", f"{profile_id}: created profile")
 
-        # Обрабатываем фото
+        # Process photos
         if photos:
-            # Удаляем все старые фото профиля
+            # Delete all old profile photos
             await ProfileMedia.delete_profile_photos(session, profile_id)
 
-            # Добавляем новые фото
+            # Add new photos
             for i, photo_file_id in enumerate(photos, 1):
                 await ProfileMedia.add_media(
                     session=session,
@@ -65,7 +65,7 @@ class Profile(BaseService):
                     order=i,
                 )
         elif photo_url:
-            # Обратная совместимость - если передано одно фото
+            # Backwards compatibility - if single photo passed
             await ProfileMedia.delete_profile_photos(session, profile_id)
 
             await ProfileMedia.add_media(
@@ -76,5 +76,5 @@ class Profile(BaseService):
                 order=1,
             )
         else:
-            logger.log("DATABASE", "Error to creating profile")
+            logger.log("DATABASE", "Error creating profile")
         return obj, is_new

@@ -14,7 +14,7 @@ def create_profile_kb() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
         keyboard=[
             [
-                KeyboardButton(text=_("Создать анкету")),
+                KeyboardButton(text=_("Create a profile")),
             ],
         ],
     )
@@ -23,24 +23,33 @@ def create_profile_kb() -> ReplyKeyboardMarkup:
 
 class RegistrationFormKb:
     @staticmethod
-    def gender() -> ReplyKeyboardMarkup:
+    def role() -> ReplyKeyboardMarkup:
+        """Select your role: Top, Bottom, or Verse"""
         kb = ReplyKeyboardMarkup(
             resize_keyboard=True,
             keyboard=[
-                [KeyboardButton(text=_("Парень")), KeyboardButton(text=_("Девушка"))],
+                [
+                    KeyboardButton(text=_("Top")),
+                    KeyboardButton(text=_("Bottom")),
+                    KeyboardButton(text=_("Verse")),
+                ],
             ],
         )
         return kb
 
     @staticmethod
-    def find_gender() -> ReplyKeyboardMarkup:
+    def find_role() -> ReplyKeyboardMarkup:
+        """Select who you're looking for"""
         kb = ReplyKeyboardMarkup(
             resize_keyboard=True,
             keyboard=[
                 [
-                    KeyboardButton(text=_("Парней")),
-                    KeyboardButton(text=_("Девушек")),
-                    KeyboardButton(text=_("Всех")),
+                    KeyboardButton(text=_("Tops")),
+                    KeyboardButton(text=_("Bottoms")),
+                ],
+                [
+                    KeyboardButton(text=_("Verse")),
+                    KeyboardButton(text=_("Everyone")),
                 ],
             ],
         )
@@ -53,7 +62,7 @@ class RegistrationFormKb:
     @staticmethod
     def photo_add() -> ReplyKeyboardMarkup:
         builder = ReplyKeyboardBuilder()
-        builder.button(text=_("Это все, сохранить фото"))
+        builder.button(text=_("That's all, save photos"))
         builder.adjust(1)
         return builder.as_markup(resize_keyboard=True)
 
@@ -77,19 +86,54 @@ class RegistrationFormKb:
     def description(user: UserModel) -> ReplyKeyboardMarkup:
         builder = ReplyKeyboardBuilder()
         if user.profile and user.profile.description:
-            builder.button(text=_("Оставить предыдущее"))
-        builder.button(text=_("Пропустить"))
+            builder.button(text=_("Keep previous"))
+        builder.button(text=_("Skip"))
 
         builder.adjust(1)
         return builder.as_markup(resize_keyboard=True)
 
     @staticmethod
+    def hosting() -> ReplyKeyboardMarkup:
+        """Select hosting option"""
+        kb = ReplyKeyboardMarkup(
+            resize_keyboard=True,
+            keyboard=[
+                [
+                    KeyboardButton(text=_("✅ Yes")),
+                    KeyboardButton(text=_("❌ No")),
+                ],
+                [
+                    KeyboardButton(text=_("🏨 Airbnb")),
+                ],
+            ],
+        )
+        return kb
+
+    @staticmethod
+    def hosting_filter() -> ReplyKeyboardMarkup:
+        """Filter profiles by hosting preference"""
+        kb = ReplyKeyboardMarkup(
+            resize_keyboard=True,
+            keyboard=[
+                [
+                    KeyboardButton(text=_("🏠 Host")),
+                    KeyboardButton(text=_("🚫 Can't Host")),
+                ],
+                [
+                    KeyboardButton(text=_("🏨 Airbnb")),
+                    KeyboardButton(text=_("👁️ See All")),
+                ],
+            ],
+        )
+        return kb
+
+    @staticmethod
     def city(user: UserModel | None):
         builder = ReplyKeyboardBuilder()
         if user.profile and user.profile.city != "📍":
-            builder.button(text=_("Оставить предыдущее"))
+            builder.button(text=_("Keep previous"))
         builder.button(
-            text=_("📍 Отправить местоположение"),
+            text=_("📍 Send location"),
             request_location=True,
         )
         builder.adjust(1)
@@ -102,7 +146,7 @@ class RegistrationFormKb:
                 resize_keyboard=True,
                 one_time_keyboard=True,
                 keyboard=[
-                    [KeyboardButton(text=_("Оставить предыдущее"))],
+                    [KeyboardButton(text=_("Keep previous"))],
                 ],
             )
         else:

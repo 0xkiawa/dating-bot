@@ -13,8 +13,8 @@ class ProfileModel(BaseModel):
         BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    gender: Mapped[str] = mapped_column(String(20), nullable=False)
-    find_gender: Mapped[str] = mapped_column(String(20), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)  # Changed from gender
+    find_role: Mapped[str] = mapped_column(String(20), nullable=False)  # Changed from find_gender
     city: Mapped[str] = mapped_column(String(200), nullable=False)
     latitude: Mapped[float] = mapped_column(nullable=False)
     longitude: Mapped[float] = mapped_column(nullable=False)
@@ -23,6 +23,7 @@ class ProfileModel(BaseModel):
     instagram: Mapped[str] = mapped_column(String(200), nullable=True)
     is_shared_location: Mapped[bool] = mapped_column(server_default="False", nullable=False)
     is_active: Mapped[bool] = mapped_column(server_default="True", nullable=False)
+    hosting: Mapped[str] = mapped_column(String(20), nullable=True)  # NEW: yes, no, airbnb
 
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="profile")  # type: ignore
     profile_media: Mapped[List["ProfileMediaModel"]] = relationship(  # type: ignore
@@ -30,6 +31,7 @@ class ProfileModel(BaseModel):
     )
 
     __table_args__ = (
-        CheckConstraint("gender IN ('male', 'female')", name="gender_check"),
-        CheckConstraint("find_gender IN ('male', 'female', 'all')", name="find_gender_check"),
+        CheckConstraint("role IN ('top', 'bottom', 'verse')", name="role_check"),
+        CheckConstraint("find_role IN ('top', 'bottom', 'verse', 'all')", name="find_role_check"),
+        CheckConstraint("hosting IN ('yes', 'no', 'airbnb')", name="hosting_check"),  # NEW
     )

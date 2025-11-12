@@ -1,88 +1,39 @@
+
 from aiogram.filters import Filter
 from aiogram.types import Message
 
 from utils.geopy import get_city_name, get_coordinates
 
-GENDER_MAP = {
-    "Парень": "male",  # Русский
-    "Хлопець": "male",  # Украинский
-    "Boy": "male",  # Английский
-    "Garçon": "male",  # Французский
-    "Chico": "male",  # Испанский
-    "Chłopak": "male",  # Польский
-    "Laki-laki": "male",  # Индонезийский
-    "Девушка": "female",  # Русский
-    "Дівчина": "female",  # Украинский
-    "Girl": "female",  # Английский
-    "Fille": "female",  # Французский
-    "Chica": "female",  # Испанский
-    "Dziewczyna": "female",  # Польский
-    "Perempuan": "female",  # Индонезийский
+ROLE_MAP = {
+    "Top": "top",
+    "Bottom": "bottom",
+    "Verse": "verse",
 }
 
-FIND_GENDER_MAP = {
-    "Парней": "male",  # Русский
-    "Хлопців": "male",  # Украинский
-    "Boys": "male",  # Английский
-    "Garçons": "male",  # Французский
-    "Chicos": "male",  # Испанский
-    "Chłopców": "male",  # Польский
-    "Laki-laki": "male",  # Индонезийский (множественное число такое же)
-    "Девушек": "female",  # Русский
-    "Дівчат": "female",  # Украинский
-    "Girls": "female",  # Английский
-    "Filles": "female",  # Французский
-    "Chicas": "female",  # Испанский
-    "Dziewcząt": "female",  # Польский
-    "Perempuan": "female",  # Индонезийский (множественное число такое же)
-    "Всех": "all",  # Русский
-    "Усіх": "all",  # Украинский
-    "Everyone": "all",  # Английский
-    "Tous": "all",  # Французский
-    "Todos": "all",  # Испанский
-    "Wszyscy": "all",  # Польский
-    "Semua": "all",  # Индонезийский
+FIND_ROLE_MAP = {
+    "Tops": "top",
+    "Bottoms": "bottom",
+    "Verse": "verse",
+    "Everyone": "all",
 }
 
 LEAVE_PREVIOUS_OPTIONS = (
-    "Оставить предыдущее",  # Русский
-    "Leave previous",  # Английский
-    "Залишити попереднє",  # Украинский
-    "Laisser le précédent",  # Французский
-    "Dejar el anterior",  # Испанский
-    "Pozostaw poprzednie",  # Польский
-    "Biarkan yang sebelumnya",  # Индонезийский (исправлено с "Biarkan sebelumnya")
+    "Keep previous",
+    "Leave previous",
 )
 
 SKIP_OPTIONS = (
-    "Пропустить",  # Русский
-    "Skip",  # Английский
-    "Пропустити",  # Украинский
-    "Passer",  # Французский
-    "Saltar",  # Испанский
-    "Pomiń",  # Польский
-    "Lewati",  # Индонезийский
+    "Skip",
 )
 
 START_COMMAND_OPTIONS = (
     "/create",
-    "Создать анкету",  # Русский
-    "Create a profile",  # Английский
-    "Створити анкету",  # Украинский
-    "Créer un profil",  # Французский
-    "Crear un perfil",  # Испанский
-    "Utwórz profil",  # Польский
-    "Buat profil",  # Индонезийский
+    "Create a profile",
 )
 
 SAVE_PHOTO_OPTIONS = (
-    "Это все, сохранить фото",  # Русский
-    "That's it, keep the photo",  # Английский
-    "Це все, зберегти фото",  # Украинский
-    "C'est tout, gardez la photo",  # Французский
-    "Eso es todo, guardar foto",  # Испанский
-    "To wszystko, zachowaj zdjęcie",  # Польский
-    "Selesai, simpan foto",  # Индонезийский (исправлено с "Sudah, simpan foto")
+    "That's all, save photos",
+    "That's it, keep the photo",
 )
 
 
@@ -91,17 +42,17 @@ class IsCreate(Filter):
         return bool(message.text in START_COMMAND_OPTIONS)
 
 
-class IsGender(Filter):
+class IsRole(Filter):
     async def __call__(self, message: Message) -> dict | bool:
-        if message.text in GENDER_MAP:
-            return {"gender": GENDER_MAP[message.text]}
-        return
+        if message.text in ROLE_MAP:
+            return {"role": ROLE_MAP[message.text]}
+        return False
 
 
-class IsFindGender(Filter):
+class IsFindRole(Filter):
     async def __call__(self, message: Message) -> dict | bool:
-        if message.text in FIND_GENDER_MAP:
-            return {"find_gender": FIND_GENDER_MAP[message.text]}
+        if message.text in FIND_ROLE_MAP:
+            return {"find_role": FIND_ROLE_MAP[message.text]}
         return False
 
 

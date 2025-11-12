@@ -6,6 +6,7 @@ from .edit_description import dating_router
 from .edit_photo import dating_router
 from .disable_profile import dating_router
 from .form_errors import dating_router
-from .mode_switch import dating_router  # Add this line
+from .mode_switch import dating_router
+from .mode_selection import dating_router  # NEW: Add this line for Enter Mode flow
 
 __all__ = ["dating_router"]

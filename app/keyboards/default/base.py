@@ -20,9 +20,24 @@ profile_kb: ReplyKeyboardMarkup = kb_gen(
     ["↩️"],
 )
 
+# UPDATED: Main menu with Enter Mode button
 menu_kb: ReplyKeyboardMarkup = kb_gen(
-    ["🔍", "👤", "📭"],
-    ["✉️"],
+    ["👤", "✉️"],
+    ["🎭"],
+)
+
+# NEW: Mode selection keyboard
+mode_selection_kb: ReplyKeyboardMarkup = kb_gen(
+    ["🍆👅🍑💦 Fun Mode"],
+    ["❤️🥂 Dating Mode"],
+    ["🤝 Friends Mode"],
+    ["↩️"],
+)
+
+# NEW: Mode-specific menus (for /fun, /dates, /friends)
+mode_menu_kb: ReplyKeyboardMarkup = kb_gen(
+    ["🔍", "📭"],
+    ["💤"],
 )
 
 search_kb: ReplyKeyboardMarkup = kb_gen(

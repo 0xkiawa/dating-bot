@@ -45,10 +45,67 @@ def calculate_age_range(age: int) -> int:
     return min(search.MAX_AGE_RANGE, round(calculated_range))
 
 
+def build_role_matching_conditions(user_role: str, user_find_role: str):
+    """
+    Build role matching conditions:
+    - Top matches with Bottom and Verse
+    - Bottom matches with Top and Verse
+    - Verse matches with everyone (Top, Bottom, Verse)
+    - "all" preference matches everyone
+    """
+    role_conditions = []
+    
+    # User's role matching logic
+    if user_role == 'top':
+        # Top looks for Bottom or Verse
+        role_conditions.append(
+            or_(
+                ProfileModel.role == 'bottom',
+                ProfileModel.role == 'verse'
+            )
+        )
+    elif user_role == 'bottom':
+        # Bottom looks for Top or Verse
+        role_conditions.append(
+            or_(
+                ProfileModel.role == 'top',
+                ProfileModel.role == 'verse'
+            )
+        )
+    elif user_role == 'verse':
+        # Verse matches with everyone
+        role_conditions.append(
+            or_(
+                ProfileModel.role == 'top',
+                ProfileModel.role == 'bottom',
+                ProfileModel.role == 'verse'
+            )
+        )
+    
+    # What user is looking for
+    if user_find_role == 'all':
+        # Looking for everyone - no additional filter needed
+        pass
+    else:
+        # Looking for specific role
+        role_conditions.append(ProfileModel.role == user_find_role)
+    
+    # Check if other profile wants user's role
+    find_role_condition = or_(
+        ProfileModel.find_role == user_role,
+        ProfileModel.find_role == 'verse',  # Verse matches with everyone
+        ProfileModel.find_role == 'all',
+    )
+    role_conditions.append(find_role_condition)
+    
+    return and_(*role_conditions) if role_conditions else True
+
+
 async def search_profiles(
     session: AsyncSession,
     profile: ProfileModel,
     user_mode: str = None,
+    hosting_filter: str = None,  # NEW: hosting filter
     initial_distance: float = search.INITIAL_DISTANCE,
     max_distance: float = search.MAX_DISTANCE,
     radius_step: float = search.RADIUS_STEP,
@@ -60,12 +117,13 @@ async def search_profiles(
     """
     Dynamic profile search: starts with small radius and increases until enough profiles found.
     Uses smart age range calculation and block-based shuffling.
-    Filters by matching mode (fun/dates/friends) if provided.
+    Filters by matching mode (fun/dates/friends), role compatibility, and hosting preference.
 
     Args:
         session: Database session
         profile: User profile for search
         user_mode: Current user mode (fun/dates/friends)
+        hosting_filter: Hosting filter (yes/no/airbnb/all)
         initial_distance: Initial search distance (km)
         max_distance: Maximum search distance (km)
         radius_step: Radius increase step (km)
@@ -117,15 +175,14 @@ async def search_profiles(
 
         distance_expr = func.acos(clamped) * earth_radius
 
+        # Build role matching conditions
+        role_matching = build_role_matching_conditions(profile.role, profile.find_role)
+
         # Base query conditions
         conditions = [
             ProfileModel.is_active == 'True',
             distance_expr < current_distance,
-            or_(ProfileModel.gender == profile.find_gender, profile.find_gender == "all"),
-            or_(
-                profile.gender == ProfileModel.find_gender,
-                ProfileModel.find_gender == "all",
-            ),
+            role_matching,  # Role-based matching
             ProfileModel.age.between(
                 profile.age - dynamic_age_range, profile.age + dynamic_age_range
             ),
@@ -135,6 +192,10 @@ async def search_profiles(
         # Add mode filter if user has active mode
         if user_mode:
             conditions.append(UserModel.current_mode == user_mode)
+
+        # NEW: Add hosting filter
+        if hosting_filter and hosting_filter != 'all':
+            conditions.append(ProfileModel.hosting == hosting_filter)
 
         stmt = (
             select(ProfileModel.id, distance_expr.label("distance"))
@@ -166,9 +227,10 @@ async def search_profiles(
     id_list = [id for key in sorted(blocks.keys()) for id in blocks[key]]
 
     mode_info = f" in {user_mode} mode" if user_mode else ""
+    hosting_info = f" (hosting: {hosting_filter})" if hosting_filter and hosting_filter != 'all' else ""
     logger.log(
         "DATABASE",
-        f"User {profile.id} (age {profile.age}, ±{dynamic_age_range} years){mode_info} found {len(id_list)} profiles "
+        f"User {profile.id} ({profile.role} looking for {profile.find_role}, age {profile.age}, ±{dynamic_age_range} years){mode_info}{hosting_info} found {len(id_list)} profiles "
         f"in radius {current_distance - radius_step:.1f}km, shuffled={'Yes' if force_shuffle else 'No'}",
     )
 

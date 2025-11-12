@@ -5,6 +5,7 @@ from database.services.base import BaseService
 from utils.logging import logger
 
 from ..models.match import MatchModel, MatchStatus
+from ..models.user import UserModel
 
 
 class Match(BaseService):
@@ -77,6 +78,55 @@ class Match(BaseService):
                 ).label("user_id")
             )
             .where(MatchModel.is_active == True)
+            .where(
+                or_(
+                    # Лайки, полученные от других пользователей
+                    (MatchModel.receiver_id == id) & (MatchModel.sender_id != id),
+                    # Взаимные лайки: пользователь отправил лайк и получил ответ (status = 2)
+                    (MatchModel.sender_id == id) & (MatchModel.status == MatchStatus.Accepted),
+                )
+            )
+        )
+
+        return [row[0] for row in result.fetchall()]
+
+    @staticmethod
+    async def get_user_matchs_by_mode(session: AsyncSession, id: int, mode: str) -> list:
+        """
+        Возвращает список пользователей, которые связаны с пользователем через лайки,
+        ОТФИЛЬТРОВАННЫЙ ПО РЕЖИМУ отправителя лайка.
+        
+        Логика:
+        1. Показывать активные лайки (is_active = True)
+        2. Показывать лайки, полученные от других пользователей (receiver_id = id)
+        3. Показывать взаимные лайки (где пользователь отправитель, но получил ответ status = 2)
+        4. ФИЛЬТР: Показывать только те лайки, где отправитель был в указанном режиме
+        """
+        
+        # Join с UserModel для проверки режима отправителя
+        result = await session.execute(
+            select(
+                case(
+                    (
+                        MatchModel.receiver_id == id,
+                        MatchModel.sender_id,
+                    ),  # Если пользователь получатель - возвращаем отправителя
+                    (
+                        MatchModel.sender_id == id,
+                        MatchModel.receiver_id,
+                    ),  # Если пользователь отправитель - возвращаем получателя
+                ).label("user_id")
+            )
+            .join(
+                UserModel,
+                # Join с отправителем для проверки его режима
+                case(
+                    (MatchModel.receiver_id == id, MatchModel.sender_id),
+                    (MatchModel.sender_id == id, MatchModel.receiver_id),
+                ) == UserModel.id
+            )
+            .where(MatchModel.is_active == True)
+            .where(UserModel.current_mode == mode)  # ФИЛЬТР ПО РЕЖИМУ
             .where(
                 or_(
                     # Лайки, полученные от других пользователей

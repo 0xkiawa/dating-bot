@@ -10,7 +10,7 @@ from app.business.dating_service import send_user_like_alert
 from app.business.profile_service import complaint_to_profile, send_profile_with_dist
 from app.constans import EFFECTS_DICTIONARY
 from app.handlers.common.start import start_command
-from app.keyboards.default.base import match_kb
+from app.keyboards.default.base import match_kb, mode_menu_kb
 from app.keyboards.default.compleint import compleint_kb
 from app.routers import dating_router
 from app.states.default import LikeResponse
@@ -64,7 +64,7 @@ async def _send_mutual_like_notifications(session: AsyncSession, user: UserModel
 async def match_archive(
     message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession
 ) -> None:
-    """Архив лайков анкеты пользовтеля"""
+    """Архив лайков анкеты пользовтеля - FILTERED BY CURRENT MODE"""
     await state.set_state(LikeResponse.response)
     await User.update(
         session,
@@ -72,29 +72,37 @@ async def match_archive(
         username=message.from_user.username,
     )  # needs to be redone
 
+    # Get current mode
+    current_mode = await User.get_mode(session, user.id)
+    
+    if not current_mode:
+        await message.answer("Please select a mode first: /fun, /dates, or /friends")
+        return
+
     # Проверяем и отправляем уведомления о взаимных лайках
     await _send_mutual_like_notifications(session, user)
 
-    if liker_ids := await Match.get_user_matchs(session, message.from_user.id):
+    # Get matches filtered by current mode
+    if liker_ids := await Match.get_user_matchs_by_mode(session, message.from_user.id, current_mode):
         text = mt.ARCHIVE_SEARCH.format(len(liker_ids))
         await message.answer(text=text, reply_markup=match_kb)
 
-        await state.update_data(ids=liker_ids)
+        await state.update_data(ids=liker_ids, current_mode=current_mode)
         profile = await Profile.get(session, liker_ids[0])
         match_data = await Match.get(session, user.id, profile.id)
         await send_profile_with_dist(user=user, profile=profile, session=session)
         if match_data and match_data.message:
             await message.answer(mt.MESSAGE_TO_YOU.format(match_data.message))
     else:
-        await message.answer(mt.LIKE_ARCHIVE)
-        await start_command(message=message, user=user, state=state)
+        # Show mode-specific empty message
+        await message.answer(mt.LIKE_ARCHIVE(current_mode), reply_markup=mode_menu_kb)
 
 
 @dating_router.callback_query(StateFilter("*"), F.data == "archive")
 async def _match_atchive_callback(
     callback: types.CallbackQuery, state: FSMContext, user: UserModel, session: AsyncSession
 ) -> None:
-    """Архив лайков анкеты пользовтеля"""
+    """Архив лайков анкеты пользовтеля - FILTERED BY CURRENT MODE"""
     await state.set_state(LikeResponse.response)
     await User.update(
         session,
@@ -104,26 +112,27 @@ async def _match_atchive_callback(
     await callback.message.answer(text=mt.SEARCH, reply_markup=match_kb)
     await callback.answer()
 
+    # Get current mode
+    current_mode = await User.get_mode(session, user.id)
+    
+    if not current_mode:
+        await callback.message.answer("Please select a mode first: /fun, /dates, or /friends")
+        return
+
     # Проверяем и отправляем уведомления о взаимных лайках
     await _send_mutual_like_notifications(session, user)
 
-    if liker_ids := await Match.get_user_matchs(session, callback.from_user.id):
-        await state.update_data(ids=liker_ids)
+    # Get matches filtered by current mode
+    if liker_ids := await Match.get_user_matchs_by_mode(session, callback.from_user.id, current_mode):
+        await state.update_data(ids=liker_ids, current_mode=current_mode)
         profile = await Profile.get(session, liker_ids[0])
         match_data = await Match.get(session, user.id, profile.id)
         await send_profile_with_dist(user=user, profile=profile, session=session)
         if match_data and match_data.message:
             await callback.message.answer(mt.MESSAGE_TO_YOU.format(match_data.message))
     else:
-        # from app.keyboards.default.base import menu_kb
-
-        await callback.message.answer(mt.LIKE_ARCHIVE)
-        # await state.clear()
-        # await callback.message.answer(
-        #     mt.MENU,
-        #     reply_markup=menu_kb,
-        # )
-        await start_command(message=callback.message, user=user, state=state)
+        # Show mode-specific empty message
+        await callback.message.answer(mt.LIKE_ARCHIVE(current_mode), reply_markup=mode_menu_kb)
 
 
 @dating_router.message(
@@ -135,6 +144,7 @@ async def _match_response(
     """'Свайпы' людей которые лайкнули анкету пользователя"""
     data = await state.get_data()
     ids = data.get("ids")
+    current_mode = data.get("current_mode")
 
     another_user = await User.get_with_profile(session, ids[0])
     match_data = await Match.get(session, user.id, another_user.id)
@@ -171,8 +181,8 @@ async def _match_response(
         if match_data and match_data.message:
             await message.answer(mt.MESSAGE_TO_YOU.format(match_data.message))
     else:
-        await message.answer(mt.EMPTY_PROFILE_SEARCH)
-        await start_command(message=message, user=user, state=state)
+        # Show mode-specific empty message and return to mode menu
+        await message.answer(mt.EMPTY_PROFILE_SEARCH(current_mode), reply_markup=mode_menu_kb)
 
 
 def generate_user_link(id: int, username: str = None) -> str:

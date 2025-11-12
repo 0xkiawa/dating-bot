@@ -20,8 +20,8 @@ from .profile import profile_command
 @dating_router.message(StateFilter(None), F.text == "🔄")
 @dating_router.message(StateFilter(None), filters.IsCreate())
 async def _create_profile_command(message: types.Message, state: FSMContext, user: UserModel):
-    """Запускает процесс создания профиля пользователя.
-    Также используется для пересоздания анкеты"""
+    """Starts user profile creation process.
+    Also used for recreating profile"""
     await state.set_state(ProfileCreate.name)
 
     kb = RegistrationFormKb.name(user)
@@ -31,30 +31,30 @@ async def _create_profile_command(message: types.Message, state: FSMContext, use
 # -< Name >-
 @dating_router.message(StateFilter(ProfileCreate.name), F.text, filters.IsName())
 async def _name(message: types.Message, state: FSMContext):
-    await state.set_state(ProfileCreate.gender)
+    await state.set_state(ProfileCreate.role)
     await state.update_data(name=message.text)
 
-    kb = RegistrationFormKb.gender()
-    await message.answer(text=mt.GENDER, reply_markup=kb)
+    kb = RegistrationFormKb.role()
+    await message.answer(text=mt.ROLE, reply_markup=kb)
 
 
-# -< Gender >-
-@dating_router.message(StateFilter(ProfileCreate.gender), F.text, filters.IsGender())
-async def _gender(message: types.Message, state: FSMContext, gender: str):
-    await state.set_state(ProfileCreate.find_gender)
-    await state.update_data(gender=gender)
+# -< Role >-
+@dating_router.message(StateFilter(ProfileCreate.role), F.text, filters.IsRole())
+async def _role(message: types.Message, state: FSMContext, role: str):
+    await state.set_state(ProfileCreate.find_role)
+    await state.update_data(role=role)
 
-    kb = RegistrationFormKb.find_gender()
-    await message.answer(text=mt.FIND_GENDER, reply_markup=kb)
+    kb = RegistrationFormKb.find_role()
+    await message.answer(text=mt.FIND_ROLE, reply_markup=kb)
 
 
-# -< Find gender >-
-@dating_router.message(StateFilter(ProfileCreate.find_gender), F.text, filters.IsFindGender())
-async def _find_gender(
-    message: types.Message, state: FSMContext, find_gender: str, user: UserModel
+# -< Find role >-
+@dating_router.message(StateFilter(ProfileCreate.find_role), F.text, filters.IsFindRole())
+async def _find_role(
+    message: types.Message, state: FSMContext, find_role: str, user: UserModel
 ):
     await state.set_state(ProfileCreate.city)
-    await state.update_data(find_gender=find_gender)
+    await state.update_data(find_role=find_role)
 
     kb = RegistrationFormKb.city(user)
     await message.answer(text=mt.CITY, reply_markup=kb)
@@ -110,13 +110,13 @@ async def _photo(message: types.Message, state: FSMContext, user: UserModel, ses
     photos = data.get("photos", [])
 
     if message.text in filters.LEAVE_PREVIOUS_OPTIONS:
-        # Получаем существующие фото из профиля пользователя
+        # Get existing photos from user profile
         existing_photos = await ProfileMedia.get_profile_photos(session, user.id)
         if existing_photos:
             photos = [photo.media for photo in existing_photos]
             await state.update_data(photos=photos)
 
-        # Переходим к описанию
+        # Move to description
         kb = RegistrationFormKb.description(user)
         await message.answer(text=mt.DESCRIPTION, reply_markup=kb)
         await state.set_state(ProfileCreate.description)
@@ -127,17 +127,17 @@ async def _photo(message: types.Message, state: FSMContext, user: UserModel, ses
             await message.answer(mt.PHOTO_NO_UPLOADED)
             return
 
-        # Обновляем данные состояния с текущими фото
+        # Update state data with current photos
         await state.update_data(photos=photos)
 
-        # Переходим к описанию
+        # Move to description
         kb = RegistrationFormKb.description(user)
         await message.answer(text=mt.DESCRIPTION, reply_markup=kb)
         await state.set_state(ProfileCreate.description)
         return
 
     elif message.photo:
-        # Проверяем лимит фотографий
+        # Check photo limit
         if len(photos) >= 3:
             await message.answer(mt.PHOTO_LIMIT_REACHED)
             return
@@ -154,7 +154,7 @@ async def _photo(message: types.Message, state: FSMContext, user: UserModel, ses
                 reply_markup=RegistrationFormKb.photo_add(),
             )
         else:
-            # Загружены все 3 фото - переходим к описанию
+            # All 3 photos uploaded - move to description
             await message.answer(mt.PHOTO_ALL_UPLOADED())
 
             kb = RegistrationFormKb.description(user)
@@ -170,7 +170,7 @@ async def _description(
     message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession
 ):
     data = await state.get_data()
-    photos = data.get("photos", [])
+    
     if message.text in filters.SKIP_OPTIONS:
         description = ""
     elif message.text in filters.LEAVE_PREVIOUS_OPTIONS and user.profile:
@@ -178,13 +178,41 @@ async def _description(
     else:
         description = message.text
 
+    await state.update_data(description=description)
+    
+    # NEW: Move to hosting question
+    await state.set_state(ProfileCreate.hosting)
+    kb = RegistrationFormKb.hosting()
+    await message.answer(text=mt.HOSTING, reply_markup=kb)
+
+
+# -< Hosting >- NEW
+@dating_router.message(StateFilter(ProfileCreate.hosting), F.text)
+async def _hosting(
+    message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession
+):
+    # Map button text to hosting values
+    hosting_map = {
+        "✅ Yes": "yes",
+        "❌ No": "no",
+        "🏨 Airbnb": "airbnb"
+    }
+    
+    hosting = hosting_map.get(message.text)
+    if not hosting:
+        await message.answer("Please select a valid option.")
+        return
+    
+    data = await state.get_data()
+    photos = data.get("photos", [])
+    
     await state.clear()
 
     await Profile.create_or_update(
         session=session,
         id=message.from_user.id,
-        gender=data["gender"],
-        find_gender=data["find_gender"],
+        role=data["role"],
+        find_role=data["find_role"],
         photos=photos,
         name=data["name"],
         age=int(data["age"]),
@@ -192,29 +220,20 @@ async def _description(
         latitude=float(data["latitude"]),
         longitude=float(data["longitude"]),
         is_shared_location=bool(data["is_shared_location"]),
-        description=description,
+        description=data.get("description", ""),
+        hosting=hosting,  # NEW
     )
 
     await message.answer(mt.PROFILE_CREATED)
     await menu(chat_id=user.id)
 
 
-# -< OLD >-
-
-# 1. -< Gender >-
-# 2. -< Find gender >-
-# 3. -< Photo >-
-# 4. -< Name >-
-# 5. -< Age >-
-# 6. -< City >-
-# 7. -< Description >-
-
-# -< NEW >-
-
+# -< Flow >-
 # 1. -< Name >-
-# 2. -< Gender >-
-# 3. -< Find gender >-
+# 2. -< Role >-
+# 3. -< Find role >-
 # 4. -< City >-
 # 5. -< Age >-
 # 6. -< Photo >-
 # 7. -< Description >-
+# 8. -< Hosting >- NEW
