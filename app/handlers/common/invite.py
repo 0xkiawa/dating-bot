@@ -16,8 +16,8 @@ from utils.base62 import encode_base62
 async def _invite_link_command(
     message: types.Message, user: UserModel, session: AsyncSession
 ) -> None:
-    """Отправляет персональную реферальную ссылку для приглашения друзей.
-    Ссылка создается на основе пользовательского id и кодировки base62"""
+    """Sends a personalized referral link to invite friends.
+The link is generated based on the user ID and base62 encoding."""
     user_code: str = encode_base62(message.from_user.id)
     url = await create_start_link(bot, f"usr_{user_code}")
     invites_count = await Referal.get_invites_count(session, user.id)

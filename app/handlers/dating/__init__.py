@@ -7,6 +7,7 @@ from .edit_photo import dating_router
 from .disable_profile import dating_router
 from .form_errors import dating_router
 from .mode_switch import dating_router
-from .mode_selection import dating_router  # NEW: Add this line for Enter Mode flow
+from .mode_selection import dating_router
+from .age_filter import dating_router  # NEW: Add age filter handler
 
 __all__ = ["dating_router"]

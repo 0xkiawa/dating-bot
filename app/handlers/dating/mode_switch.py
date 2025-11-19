@@ -196,17 +196,36 @@ async def start_mode_search(
     user: UserModel,
     session: AsyncSession,
     mode: str,
-    hosting_filter: str = 'all',  # NEW: default to 'all'
+    hosting_filter: str = 'all',
 ) -> None:
-    """Start searching in specified mode with hosting filter"""
+    """Start searching in specified mode with hosting filter and age filter"""
     from app.keyboards.default.base import search_kb
     
     await message.answer(mt.SEARCH, reply_markup=search_kb)
     
-    # Search profiles with mode and hosting filter
-    if profile_list := await search_profiles(session, user.profile, user_mode=mode, hosting_filter=hosting_filter):
+    # NEW: Get age filters from state if they exist
+    data = await state.get_data()
+    min_age = data.get("min_age")  # Will be None if not set
+    max_age = data.get("max_age")  # Will be None if not set
+    
+    # Search profiles with mode, hosting filter, and age filter
+    if profile_list := await search_profiles(
+        session, 
+        user.profile, 
+        user_mode=mode, 
+        hosting_filter=hosting_filter,
+        min_age=min_age,  # NEW: Pass age filter
+        max_age=max_age,  # NEW: Pass age filter
+    ):
         await state.set_state(Search.search)
-        await state.update_data(ids=profile_list, current_mode=mode)
+        # NEW: Save all filters in state so they persist
+        await state.update_data(
+            ids=profile_list, 
+            current_mode=mode,
+            hosting_filter=hosting_filter,
+            min_age=min_age,  # NEW: Keep age filter
+            max_age=max_age,  # NEW: Keep age filter
+        )
         
         first_profile = await Profile.get(session, profile_list[0])
         await send_profile_with_dist(user=user, profile=first_profile, session=session)

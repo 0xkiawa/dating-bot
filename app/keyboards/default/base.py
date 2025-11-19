@@ -34,9 +34,10 @@ mode_selection_kb: ReplyKeyboardMarkup = kb_gen(
     ["↩️"],
 )
 
-# NEW: Mode-specific menus (for /fun, /dates, /friends)
+# UPDATED: Mode-specific menus - Added Age Filter and Hosting buttons
 mode_menu_kb: ReplyKeyboardMarkup = kb_gen(
     ["🔍", "📭"],
+    ["🎂", "🏠"],  # NEW: Age filter and Hosting filter
     ["💤"],
 )
 
@@ -64,4 +65,16 @@ return_to_menu_kb: ReplyKeyboardMarkup = kb_gen(
 
 mode_confirm_kb: ReplyKeyboardMarkup = lambda: kb_gen(
     ["✅ Yes, Switch", "❌ No, Stay"],
+)
+
+# NEW: Age filter keyboard (simple with just back button)
+age_filter_kb: ReplyKeyboardMarkup = kb_gen(
+    ["↩️"],
+)
+
+# NEW: Hosting filter keyboard
+hosting_kb: ReplyKeyboardMarkup = lambda: kb_gen(
+    ["Yes ✅", "No ❌"],
+    ["Airbnb 🏨", "All 🌍"],
+    ["↩️"],
 )

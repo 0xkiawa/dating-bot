@@ -25,3 +25,9 @@ class Search(StatesGroup):
     search = State()
     message = State()
     hosting_filter = State()  # NEW: Filter by hosting preference
+
+
+# NEW: Age filter states
+class AgeFilter(StatesGroup):
+    min_age = State()
+    max_age = State()

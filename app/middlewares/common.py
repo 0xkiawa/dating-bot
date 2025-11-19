@@ -10,6 +10,7 @@ from database.services import User
 from database.services.profile import Profile
 from database.services.referal import Referal
 from utils.base62 import decode_base62
+from utils.logging import logger  # ADD THIS IMPORT
 
 
 class CommonMiddleware(BaseMiddleware):
@@ -32,18 +33,26 @@ class CommonMiddleware(BaseMiddleware):
             code = "unk"
             try:
                 if inviter_code := getattr(data.get("command"), "args", None):
+                    logger.log("DATABASE", f"Processing invite code: {inviter_code}")  # ADD THIS
                     code, inviter_id = inviter_code.split("_")
                     inviter_id = decode_base62(inviter_id)
+                    logger.log("DATABASE", f"Decoded inviter ID: {inviter_id}")  # ADD THIS
+                    
                     if await User.get_by_id(session, inviter_id):
+                        logger.log("DATABASE", f"Creating referral: user={user.id}, inviter={inviter_id}")  # ADD THIS
                         await Referal.create(
                             session=session,
                             user_id=user.id,
                             inviter_id=inviter_id,
                             code=code,
-                            source=REFERAL_SOURCES[code],
+                            source=REFERAL_SOURCES.get(code, "Unknown"),  # CHANGED: Use .get() to avoid KeyError
                         )
-            except Exception:
-                pass
+                        logger.log("DATABASE", f"✅ Referral created successfully!")  # ADD THIS
+                    else:
+                        logger.log("DATABASE", f"⚠️ Inviter {inviter_id} not found in database")  # ADD THIS
+            except Exception as e:
+                logger.log("DATABASE", f"❌ Error creating referral: {e}")  # CHANGED: Show the actual error
+            
             await new_user_alert_to_group(user=user, code=code)
 
             if user.profile and not user.profile.is_active:

@@ -105,7 +105,9 @@ async def search_profiles(
     session: AsyncSession,
     profile: ProfileModel,
     user_mode: str = None,
-    hosting_filter: str = None,  # NEW: hosting filter
+    hosting_filter: str = None,
+    min_age: int = None,  # NEW: minimum age filter
+    max_age: int = None,  # NEW: maximum age filter
     initial_distance: float = search.INITIAL_DISTANCE,
     max_distance: float = search.MAX_DISTANCE,
     radius_step: float = search.RADIUS_STEP,
@@ -117,13 +119,15 @@ async def search_profiles(
     """
     Dynamic profile search: starts with small radius and increases until enough profiles found.
     Uses smart age range calculation and block-based shuffling.
-    Filters by matching mode (fun/dates/friends), role compatibility, and hosting preference.
+    Filters by matching mode (fun/dates/friends), role compatibility, hosting preference, and age range.
 
     Args:
         session: Database session
         profile: User profile for search
         user_mode: Current user mode (fun/dates/friends)
         hosting_filter: Hosting filter (yes/no/airbnb/all)
+        min_age: Minimum age filter (user preference) - NEW
+        max_age: Maximum age filter (user preference) - NEW
         initial_distance: Initial search distance (km)
         max_distance: Maximum search distance (km)
         radius_step: Radius increase step (km)
@@ -148,8 +152,18 @@ async def search_profiles(
     block_size = block_size or search.BLOCK_SIZE
     earth_radius = earth_radius or search.EARTH_RADIUS
 
-    # Calculate dynamic age range
-    dynamic_age_range = calculate_age_range(profile.age)
+    # NEW: Calculate age range - use custom if provided, otherwise use dynamic calculation
+    if min_age is not None and max_age is not None:
+        # User has set custom age range
+        age_min = min_age
+        age_max = max_age
+        age_filter_type = "custom"
+    else:
+        # Use dynamic age range based on user's age
+        dynamic_age_range = calculate_age_range(profile.age)
+        age_min = profile.age - dynamic_age_range
+        age_max = profile.age + dynamic_age_range
+        age_filter_type = "auto"
 
     found_profiles = []
     current_distance = initial_distance
@@ -183,9 +197,7 @@ async def search_profiles(
             ProfileModel.is_active == 'True',
             distance_expr < current_distance,
             role_matching,  # Role-based matching
-            ProfileModel.age.between(
-                profile.age - dynamic_age_range, profile.age + dynamic_age_range
-            ),
+            ProfileModel.age.between(age_min, age_max),  # UPDATED: Use calculated age range
             ProfileModel.id != profile.id,
         ]
 
@@ -193,7 +205,7 @@ async def search_profiles(
         if user_mode:
             conditions.append(UserModel.current_mode == user_mode)
 
-        # NEW: Add hosting filter
+        # Add hosting filter
         if hosting_filter and hosting_filter != 'all':
             conditions.append(ProfileModel.hosting == hosting_filter)
 
@@ -228,9 +240,11 @@ async def search_profiles(
 
     mode_info = f" in {user_mode} mode" if user_mode else ""
     hosting_info = f" (hosting: {hosting_filter})" if hosting_filter and hosting_filter != 'all' else ""
+    age_info = f" (age: {age_min}-{age_max} [{age_filter_type}])"  # NEW: Show age range and type
+    
     logger.log(
         "DATABASE",
-        f"User {profile.id} ({profile.role} looking for {profile.find_role}, age {profile.age}, ±{dynamic_age_range} years){mode_info}{hosting_info} found {len(id_list)} profiles "
+        f"User {profile.id} ({profile.role} looking for {profile.find_role}{age_info}){mode_info}{hosting_info} found {len(id_list)} profiles "
         f"in radius {current_distance - radius_step:.1f}km, shuffled={'Yes' if force_shuffle else 'No'}",
     )
 
