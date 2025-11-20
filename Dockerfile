@@ -6,32 +6,34 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+# Install system dependencies for Python packages
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc libc-dev libffi-dev python3-dev && \
     rm -rf /var/lib/apt/lists/*
 
+# Create virtual environment
 RUN pip install virtualenv
 RUN virtualenv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-
-# Stage 2: final
+# Stage 2: final image
 FROM python:3.11-slim-bookworm
 
-USER root
 WORKDIR /app
 
+# Copy virtual environment
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy entire project
+# Copy project files
 COPY . .
 
 # Ensure database folder exists
-RUN mkdir -p /app/database && chmod -R 777 /app
+RUN mkdir -p /app/database && chmod -R 777 /app/database
 
-# Run DB setup ONCE, then start app
+# Run DB setup once, then start bot
 CMD ["sh", "-c", "python newdb.py && python main.py"]
