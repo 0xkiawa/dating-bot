@@ -11,15 +11,20 @@ env.read_env()
 # -< Database >-
 class DatabaseSettings:
     NAME: str = env.str("DB_NAME", default=None)
-    HOST: str = env.str("DB_HOST", default="localhost")
-    PORT: int = env.int("DB_PORT", default=5432)
-    USER: str = env.str("DB_USER", default="postgres")
-    PASS: str = env.str("DB_PASS", default="postgres")
+    HOST: str = env.str("DB_HOST", default=None)
+    PORT: int = env.int("DB_PORT", default=None)
+    USER: str = env.str("DB_USER", default=None)
+    PASS: str = env.str("DB_PASS", default=None)
 
-    URL: str = env.str("DB_URL", default=f"sqlite+aiosqlite:///{DIR}/database/db.sqlite3")
-
-    if all((NAME, HOST, PORT, USER, PASS)):
-        URL = f"postgresql+asyncpg://{USER}:{PASS}@{HOST}:{PORT}/{NAME}"
+    # Use DB_URL if provided (Railway), otherwise build from individual vars
+    _db_url = env.str("DB_URL", default=None)
+    
+    if _db_url:
+        URL: str = _db_url
+    elif all((NAME, HOST, PORT, USER, PASS)):
+        URL: str = f"postgresql+asyncpg://{USER}:{PASS}@{HOST}:{PORT}/{NAME}"
+    else:
+        URL: str = f"sqlite+aiosqlite:///{DIR}/database/db.sqlite3"
 
     ECHO = False
     POOL_SIZE = 5
@@ -31,15 +36,20 @@ class RedisSettings:
     DB: int = env.int("REDIS_DB", default=5)
     HOST: str = env.str("REDIS_HOST", default=None)
     PORT: int = env.int("REDIS_PORT", default=6379)
-    USER: int = env.int("REDIS_USER", default="default")
-    PASS: int = env.str("REDIS_PASS", default=None)
+    USER: str = env.str("REDIS_USER", default=None)
+    PASS: str = env.str("REDIS_PASS", default=None)
 
-    URL: str = env.str("RD_URL", default=None)
-
-    if all((DB, HOST, PORT)):
-        URL = f"redis://{HOST}:{PORT}/{DB}"
+    _rd_url = env.str("RD_URL", default=None)
+    
+    if _rd_url:
+        URL: str = _rd_url
+    elif HOST and all((DB, HOST, PORT)):
         if all((USER, PASS)):
-            URL = f"redis://{USER}:{PASS}@{HOST}:{PORT}/{DB}"
+            URL: str = f"redis://{USER}:{PASS}@{HOST}:{PORT}/{DB}"
+        else:
+            URL: str = f"redis://{HOST}:{PORT}/{DB}"
+    else:
+        URL: str = None
 
 
 # -< Telegram bot >-
@@ -59,18 +69,16 @@ class TelegramBotSettings:
 
 # -< Search >-
 class SearchSettings:
-    INITIAL_DISTANCE: float = env.float("INITIAL_DISTANCE", default=200.0)  # Стартовый радиус
-    MAX_DISTANCE: float = env.float("MAX_DISTANCE", default=10000.0)  # Максимальный радиус
-    RADIUS_STEP: float = env.float("RADIUS_STEP", default=200.0)  # Шаг увеличения радиуса
-    MIN_PROFILES: int = env.int("MIN_PROFILES", default=100)  # Минимальное количество анкет
-    EARTH_RADIUS: int = env.int("EARTH_RADIUS", default=6371)  # Радиус Земли
-    BLOCK_SIZE: float = env.float("BLOCK_SIZE", default=15.0)  # Размер блока для перемешивания
+    INITIAL_DISTANCE: float = env.float("INITIAL_DISTANCE", default=200.0)
+    MAX_DISTANCE: float = env.float("MAX_DISTANCE", default=10000.0)
+    RADIUS_STEP: float = env.float("RADIUS_STEP", default=200.0)
+    MIN_PROFILES: int = env.int("MIN_PROFILES", default=100)
+    EARTH_RADIUS: int = env.int("EARTH_RADIUS", default=6371)
+    BLOCK_SIZE: float = env.float("BLOCK_SIZE", default=15.0)
 
-    AGE_RANGE_MULTIPLIER: float = env.float(
-        "AGE_RANGE_MULTIPLIER", default=0.15
-    )  # Коэффициент для расчета диапазона
-    MIN_AGE_RANGE: int = env.int("MIN_AGE_RANGE", default=2)  # Минимальный возрастной диапазон
-    MAX_AGE_RANGE: int = env.int("MAX_AGE_RANGE", default=15)  # Максимальный возрастной диапазон
+    AGE_RANGE_MULTIPLIER: float = env.float("AGE_RANGE_MULTIPLIER", default=0.15)
+    MIN_AGE_RANGE: int = env.int("MIN_AGE_RANGE", default=2)
+    MAX_AGE_RANGE: int = env.int("MAX_AGE_RANGE", default=15)
 
 
 # -< Path\Dir >-
