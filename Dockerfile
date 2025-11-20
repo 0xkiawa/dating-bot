@@ -21,17 +21,17 @@ RUN pip install -r requirements.txt
 # Stage 2: final
 FROM python:3.11-slim-bookworm
 
-# RUN EVERYTHING AS ROOT (gives full access)
 USER root
-
 WORKDIR /app
 
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Copy entire project
 COPY . .
 
-# MAKE SURE DATABASE FOLDER EXISTS AND IS WRITABLE
+# Ensure database folder exists
 RUN mkdir -p /app/database && chmod -R 777 /app
 
-CMD ["python", "main.py"]
+# Run DB setup ONCE, then start app
+CMD ["sh", "-c", "python newdb.py && python main.py"]
