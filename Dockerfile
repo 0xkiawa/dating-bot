@@ -32,8 +32,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy project files
 COPY . .
 
-# Ensure database folder exists with proper permissions
-RUN mkdir -p /app/database && chmod -R 777 /app/database
 
 # Run migrations and start bot
 CMD ["sh", "-c", "alembic upgrade head && python main.py"]
