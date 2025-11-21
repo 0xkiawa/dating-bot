@@ -1,7 +1,27 @@
+from pathlib import Path
 from environs import Env
 
 env = Env()
 env.read_env()
+
+# Project directory
+DIR = Path(__file__).resolve().parent.parent
+
+# Locales directory for translations
+LOCALES_DIR = DIR / "locales"
+
+
+class TgBot:
+    """Telegram Bot settings"""
+    BOT_TOKEN: str = env.str("BOT_TOKEN")
+    ADMIN_IDS: list[int] = env.list("ADMIN_IDS", [], subcast=int)
+    I18N_DOMAIN: str = env.str("I18N_DOMAIN", default="messages")
+
+
+class RedisSettings:
+    """Redis settings for FSM storage"""
+    URL: str = env.str("REDIS_URL", default=None)
+
 
 class DatabaseSettings:
     NAME: str = env.str("DB_NAME", default=None)
@@ -29,3 +49,9 @@ class DatabaseSettings:
     ECHO = False
     POOL_SIZE = 5
     MAX_OVERFLOW = 10
+
+
+# Create instances
+tgbot = TgBot()
+redis = RedisSettings()
+db = DatabaseSettings()
