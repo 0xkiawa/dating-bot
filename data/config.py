@@ -10,6 +10,9 @@ DIR = Path(__file__).resolve().parent.parent
 # Locales directory for translations
 LOCALES_DIR = DIR / "locales"
 
+# Log file path
+LOG_FILE_PATH = DIR / "logs" / "bot.log"
+
 
 class TgBot:
     """Telegram Bot settings"""
