@@ -7,7 +7,7 @@ env.read_env()
 # Project directory
 DIR = Path(__file__).resolve().parent.parent
 
-# Locales directory for translations
+# Locales directory for translations (it's inside data folder)
 LOCALES_DIR = DIR / "data" / "locales"
 
 # Log file path
@@ -24,6 +24,12 @@ class TgBot:
 class RedisSettings:
     """Redis settings for FSM storage"""
     URL: str = env.str("REDIS_URL", default=None)
+
+
+class SearchSettings:
+    """Search settings for matching profiles"""
+    MAX_DISTANCE_KM: int = env.int("MAX_DISTANCE_KM", default=50)
+    MAX_AGE_DIFFERENCE: int = env.int("MAX_AGE_DIFFERENCE", default=10)
 
 
 class DatabaseSettings:
@@ -57,4 +63,5 @@ class DatabaseSettings:
 # Create instances
 tgbot = TgBot()
 redis = RedisSettings()
+search = SearchSettings()
 db = DatabaseSettings()
