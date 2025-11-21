@@ -13,6 +13,9 @@ LOCALES_DIR = DIR / "data" / "locales"
 # Log file path
 LOG_FILE_PATH = DIR / "logs" / "bot.log"
 
+# Graph file path for statistics
+GRAPH_FILE_PATH = DIR / "utils" / "graph.png"
+
 
 class TgBot:
     """Telegram Bot settings"""
