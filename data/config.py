@@ -18,6 +18,7 @@ class TgBot:
     """Telegram Bot settings"""
     BOT_TOKEN: str = env.str("BOT_TOKEN")
     ADMIN_IDS: list[int] = env.list("ADMIN_IDS", [], subcast=int)
+    MODERATOR_GROUP_ID: int = env.int("MODERATOR_GROUP_ID", default=None)
     I18N_DOMAIN: str = env.str("I18N_DOMAIN", default="messages")
 
 
