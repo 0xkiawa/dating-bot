@@ -8,7 +8,7 @@ env.read_env()
 DIR = Path(__file__).resolve().parent.parent
 
 # Locales directory for translations
-LOCALES_DIR = DIR / "locales"
+LOCALES_DIR = DIR / "data" / "locales"
 
 # Log file path
 LOG_FILE_PATH = DIR / "logs" / "bot.log"
