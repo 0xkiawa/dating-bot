@@ -28,8 +28,11 @@ class RedisSettings:
 
 class SearchSettings:
     """Search settings for matching profiles"""
-    MAX_DISTANCE_KM: int = env.int("MAX_DISTANCE_KM", default=50)
+    INITIAL_DISTANCE: float = env.float("INITIAL_DISTANCE", default=50.0)
+    MAX_DISTANCE_KM: int = env.int("MAX_DISTANCE_KM", default=100)
     MAX_AGE_DIFFERENCE: int = env.int("MAX_AGE_DIFFERENCE", default=10)
+    DISTANCE_INCREMENT: float = env.float("DISTANCE_INCREMENT", default=10.0)
+    MAX_RETRIES: int = env.int("MAX_SEARCH_RETRIES", default=5)
 
 
 class DatabaseSettings:
