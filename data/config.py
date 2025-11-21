@@ -1,3 +1,8 @@
+from environs import Env
+
+env = Env()
+env.read_env()
+
 class DatabaseSettings:
     NAME: str = env.str("DB_NAME", default=None)
     HOST: str = env.str("DB_HOST", default=None)
