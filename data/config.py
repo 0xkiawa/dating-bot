@@ -34,6 +34,7 @@ class SearchSettings:
     MAX_AGE_DIFFERENCE: int = env.int("MAX_AGE_DIFFERENCE", default=10)
     DISTANCE_INCREMENT: float = env.float("DISTANCE_INCREMENT", default=10.0)
     RADIUS_STEP: float = env.float("RADIUS_STEP", default=10.0)
+    MIN_PROFILES: int = env.int("MIN_PROFILES", default=10)
     MAX_RETRIES: int = env.int("MAX_SEARCH_RETRIES", default=5)
 
 class DatabaseSettings:
