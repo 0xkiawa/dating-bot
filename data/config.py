@@ -16,6 +16,9 @@ LOG_FILE_PATH = DIR / "logs" / "bot.log"
 # Graph file path for statistics
 GRAPH_FILE_PATH = DIR / "utils" / "graph.png"
 
+# Logo directory
+LOGO_DIR = DIR / "images" / "logo"
+
 
 class TgBot:
     """Telegram Bot settings"""
