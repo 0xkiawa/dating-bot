@@ -25,8 +25,8 @@ class TgBot:
     BOT_TOKEN: str = env.str("BOT_TOKEN")
     ADMIN_IDS: list[int] = env.list("ADMIN_IDS", [], subcast=int)
     MODERATOR_GROUP_ID: int = env.int("MODERATOR_GROUP_ID", default=None)
+    NEW_USER_ALET_TO_GROUP: bool = env.bool("NEW_USER_ALERT_TO_GROUP", default=False)
     I18N_DOMAIN: str = env.str("I18N_DOMAIN", default="messages")
-
 
 class RedisSettings:
     """Redis settings for FSM storage"""
