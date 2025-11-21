@@ -79,4 +79,4 @@ tgbot = TgBot()
 redis = RedisSettings()
 search = SearchSettings()
 db = DatabaseSettings()
-db = database  # Alias for backwards compatibility
+database = db  # Alias for backwards compatibility
