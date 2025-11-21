@@ -26,6 +26,7 @@ class TgBot:
     ADMIN_IDS: list[int] = env.list("ADMIN_IDS", [], subcast=int)
     MODERATOR_GROUP_ID: int = env.int("MODERATOR_GROUP_ID", default=None)
     NEW_USER_ALET_TO_GROUP: bool = env.bool("NEW_USER_ALERT_TO_GROUP", default=False)
+    SKIP_UPDATES: bool = env.bool("SKIP_UPDATES", default=True)
     I18N_DOMAIN: str = env.str("I18N_DOMAIN", default="messages")
 
 class RedisSettings:
