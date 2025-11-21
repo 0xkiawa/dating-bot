@@ -33,8 +33,8 @@ class SearchSettings:
     MAX_DISTANCE_KM: int = env.int("MAX_DISTANCE_KM", default=100)
     MAX_AGE_DIFFERENCE: int = env.int("MAX_AGE_DIFFERENCE", default=10)
     DISTANCE_INCREMENT: float = env.float("DISTANCE_INCREMENT", default=10.0)
+    RADIUS_STEP: float = env.float("RADIUS_STEP", default=10.0)
     MAX_RETRIES: int = env.int("MAX_SEARCH_RETRIES", default=5)
-
 
 class DatabaseSettings:
     NAME: str = env.str("DB_NAME", default=None)
