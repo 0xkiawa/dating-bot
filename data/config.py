@@ -35,6 +35,7 @@ class SearchSettings:
     DISTANCE_INCREMENT: float = env.float("DISTANCE_INCREMENT", default=10.0)
     RADIUS_STEP: float = env.float("RADIUS_STEP", default=10.0)
     MIN_PROFILES: int = env.int("MIN_PROFILES", default=10)
+    BLOCK_SIZE: float = env.float("BLOCK_SIZE", default=50.0)
     MAX_RETRIES: int = env.int("MAX_SEARCH_RETRIES", default=5)
 
 class DatabaseSettings:
