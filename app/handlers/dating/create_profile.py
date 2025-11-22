@@ -122,7 +122,7 @@ async def _photo(message: types.Message, state: FSMContext, user: UserModel, ses
         await state.set_state(ProfileCreate.description)
         return
 
-    elif message.text == mt.PHOTO_SAVE_FINISH_BUTTON:
+    elif message.text in filters.SAVE_PHOTO_OPTIONS:
         if not photos:
             await message.answer(mt.PHOTO_NO_UPLOADED)
             return
