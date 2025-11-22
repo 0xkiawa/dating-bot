@@ -13,8 +13,11 @@ from utils.logging import logger
 async def create_tables():
     """Create database tables if they don't exist"""
     try:
-        from database.connect import async_engine
+        from database.connect import async_engine, async_session
         from database.models.base import BaseModel
+        from database.models.profile import ProfileModel
+        from sqlalchemy import select
+        
         # Just import the modules to register the models
         import database.models.user
         import database.models.profile
@@ -23,6 +26,19 @@ async def create_tables():
         async with async_engine.begin() as conn:
             await conn.run_sync(BaseModel.metadata.create_all)
         logger.log("BOT", "✅ Tables created successfully!")
+        
+        # FIX: Force update all profiles to have is_active = True
+        logger.log("BOT", "Fixing existing profiles...")
+        async with async_session() as session:
+            result = await session.execute(select(ProfileModel))
+            profiles = result.scalars().all()
+            
+            for profile in profiles:
+                profile.is_active = True
+            
+            await session.commit()
+            logger.log("BOT", f"✅ Fixed {len(profiles)} profiles!")
+        
     except Exception as e:
         logger.log("BOT", f"❌ Error creating tables: {e}")
         raise
