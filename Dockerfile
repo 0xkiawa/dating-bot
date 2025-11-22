@@ -33,4 +33,4 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY . .
 
 # Run migrations and start bot
-CMD ["sh", "-c", "python newdb.py && python main.py"]
+CMD ["sh", "-c", "echo 'Starting table creation...' && python newdb.py && echo 'Tables created, starting bot...' && python main.py"]
