@@ -26,9 +26,9 @@ class Profile(BaseService):
 
     @classmethod
     async def create_or_update(cls, session: AsyncSession, **kwargs) -> "Profile":
-        # Ensure is_active is stored as string 'True'/'False'
-        if "is_active" in kwargs:
-            kwargs["is_active"] = str(kwargs["is_active"])
+        # Ensure is_active defaults to True if not provided
+        if "is_active" not in kwargs:
+            kwargs["is_active"] = True
 
         profile_id = kwargs.pop("id")  # Extract profile id
         photo_url = kwargs.pop(
