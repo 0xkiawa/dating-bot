@@ -41,6 +41,7 @@ class SearchSettings:
     MAX_DISTANCE_KM: int = env.int("MAX_DISTANCE_KM", default=100)
     MAX_AGE_DIFFERENCE: int = env.int("MAX_AGE_DIFFERENCE", default=10)
     MIN_AGE_RANGE: int = env.int("MIN_AGE_RANGE", default=5)
+    AGE_RANGE_MULTIPLIER: float = env.float("AGE_RANGE_MULTIPLIER", default=0.2)
     DISTANCE_INCREMENT: float = env.float("DISTANCE_INCREMENT", default=10.0)
     RADIUS_STEP: float = env.float("RADIUS_STEP", default=10.0)
     MIN_PROFILES: int = env.int("MIN_PROFILES", default=10)
