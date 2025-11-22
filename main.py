@@ -15,8 +15,9 @@ async def create_tables():
     try:
         from database.connect import async_engine
         from database.models.base import BaseModel
-        from database.models.user import User
-        from database.models.profile import Profile
+        # Just import the modules to register the models
+        import database.models.user
+        import database.models.profile
         
         logger.log("BOT", "Creating database tables...")
         async with async_engine.begin() as conn:
