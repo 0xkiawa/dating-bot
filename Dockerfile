@@ -32,6 +32,5 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy project files
 COPY . .
 
-
 # Run migrations and start bot
-CMD ["sh", "-c", "alembic upgrade head && python main.py"]
+CMD ["sh", "-c", "python newdb.py && python main.py"]
