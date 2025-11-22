@@ -10,6 +10,23 @@ from loader import bot, dp
 from utils.logging import logger
 
 
+async def create_tables():
+    """Create database tables if they don't exist"""
+    try:
+        from database.connect import async_engine
+        from database.models.base import BaseModel
+        from database.models.user import User
+        from database.models.profile import Profile
+        
+        logger.log("BOT", "Creating database tables...")
+        async with async_engine.begin() as conn:
+            await conn.run_sync(BaseModel.metadata.create_all)
+        logger.log("BOT", "✅ Tables created successfully!")
+    except Exception as e:
+        logger.log("BOT", f"❌ Error creating tables: {e}")
+        raise
+
+
 async def on_startup() -> None:
     await set_default_commands()
     logger.log("BOT", "~ Bot startup")
@@ -20,6 +37,9 @@ async def on_shutdown() -> None:
 
 
 async def main():
+    # Create tables before starting the bot
+    await create_tables()
+    
     setup_middlewares(dp)
     setup_handlers(dp)
     dp.startup.register(on_startup)
