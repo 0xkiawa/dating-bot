@@ -53,52 +53,33 @@ def build_role_matching_conditions(user_role: str, user_find_role: str):
     - Verse matches with everyone (Top, Bottom, Verse)
     - "all" preference matches everyone
     """
-    role_conditions = []
     
-    # User's role matching logic
-    if user_role == 'top':
-        # Top looks for Bottom or Verse
-        role_conditions.append(
-            or_(
-                ProfileModel.role == 'bottom',
-                ProfileModel.role == 'verse'
-            )
-        )
-    elif user_role == 'bottom':
-        # Bottom looks for Top or Verse
-        role_conditions.append(
-            or_(
-                ProfileModel.role == 'top',
-                ProfileModel.role == 'verse'
-            )
-        )
-    elif user_role == 'verse':
-        # Verse matches with everyone
-        role_conditions.append(
-            or_(
-                ProfileModel.role == 'top',
-                ProfileModel.role == 'bottom',
-                ProfileModel.role == 'verse'
-            )
-        )
-    
-    # What user is looking for
-    if user_find_role == 'all':
-        # Looking for everyone - no additional filter needed
-        pass
-    else:
-        # Looking for specific role
-        role_conditions.append(ProfileModel.role == user_find_role)
-    
-    # Check if other profile wants user's role
-    find_role_condition = or_(
+    # What the OTHER profile is looking for (must match MY role or be open to all/verse)
+    other_wants_me = or_(
         ProfileModel.find_role == user_role,
-        ProfileModel.find_role == 'verse',  # Verse matches with everyone
+        ProfileModel.find_role == 'verse',
         ProfileModel.find_role == 'all',
     )
-    role_conditions.append(find_role_condition)
     
-    return and_(*role_conditions) if role_conditions else True
+    # What I'm looking for
+    if user_find_role == 'all':
+        # I want everyone
+        i_want_them = or_(
+            ProfileModel.role == 'top',
+            ProfileModel.role == 'bottom',
+            ProfileModel.role == 'verse'
+        )
+    elif user_find_role == 'verse':
+        # I specifically want verse users, but verse also accepts everyone
+        i_want_them = ProfileModel.role == 'verse'
+    else:
+        # I want specific role (top/bottom), but also accept verse
+        i_want_them = or_(
+            ProfileModel.role == user_find_role,
+            ProfileModel.role == 'verse'
+        )
+    
+    return and_(other_wants_me, i_want_them)
 
 
 async def search_profiles(
