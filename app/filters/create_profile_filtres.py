@@ -34,6 +34,7 @@ START_COMMAND_OPTIONS = (
 SAVE_PHOTO_OPTIONS = (
     "That's all, save photos",
     "That's it, keep the photo",
+    "✅ Done, save photos",
 )
 
 
