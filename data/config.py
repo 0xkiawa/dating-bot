@@ -41,6 +41,7 @@ class SearchSettings:
     MAX_DISTANCE_KM: int = env.int("MAX_DISTANCE_KM", default=100)
     MAX_AGE_DIFFERENCE: int = env.int("MAX_AGE_DIFFERENCE", default=10)
     MIN_AGE_RANGE: int = env.int("MIN_AGE_RANGE", default=5)
+    MAX_AGE_RANGE: int = env.int("MAX_AGE_RANGE", default=15)
     AGE_RANGE_MULTIPLIER: float = env.float("AGE_RANGE_MULTIPLIER", default=0.2)
     DISTANCE_INCREMENT: float = env.float("DISTANCE_INCREMENT", default=10.0)
     RADIUS_STEP: float = env.float("RADIUS_STEP", default=10.0)
@@ -48,6 +49,8 @@ class SearchSettings:
     BLOCK_SIZE: float = env.float("BLOCK_SIZE", default=50.0)
     EARTH_RADIUS: int = env.int("EARTH_RADIUS", default=6371)
     MAX_RETRIES: int = env.int("MAX_SEARCH_RETRIES", default=5)
+
+
 
 class DatabaseSettings:
     NAME: str = env.str("DB_NAME", default=None)
