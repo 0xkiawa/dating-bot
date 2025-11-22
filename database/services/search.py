@@ -194,7 +194,7 @@ async def search_profiles(
 
         # Base query conditions
         conditions = [
-            ProfileModel.is_active == 'True',
+            ProfileModel.is_active == True,
             distance_expr < current_distance,
             role_matching,  # Role-based matching
             ProfileModel.age.between(age_min, age_max),  # UPDATED: Use calculated age range
