@@ -14,7 +14,7 @@ class ProfileModel(BaseModel):
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False)
-    find_role: Mapped[str] = mapped_column(String(20), nullable=False)
+    find_role: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'all'"))  # CHANGED: Default to 'all'
     city: Mapped[str] = mapped_column(String(200), nullable=False)
     latitude: Mapped[float] = mapped_column(nullable=False)
     longitude: Mapped[float] = mapped_column(nullable=False)

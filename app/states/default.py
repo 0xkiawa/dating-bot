@@ -7,13 +7,13 @@ class LikeResponse(StatesGroup):
 
 class ProfileCreate(StatesGroup):
     name = State()
-    role = State()  # Changed from gender
-    find_role = State()  # Changed from find_gender
+    role = State()
+    # REMOVED: find_role = State()  # No longer needed
     age = State()
     city = State()
     photo = State()
     description = State()
-    hosting = State()  # NEW: Can you host?
+    hosting = State()
 
 
 class ProfileEdit(StatesGroup):
@@ -24,11 +24,11 @@ class ProfileEdit(StatesGroup):
 class Search(StatesGroup):
     search = State()
     message = State()
-    hosting_filter = State()  # NEW: Filter by hosting preference
-    role_filter = State()  # NEW: Filter by role preference
+    hosting_filter = State()
+    role_filter = State()
 
 
-# NEW: Age filter states
+# Age filter states
 class AgeFilter(StatesGroup):
     min_age = State()
     max_age = State()

@@ -192,7 +192,7 @@ async def hosting_filter_handler(
     await message.answer(mt.ROLE_FILTER, reply_markup=RegistrationFormKb.role_filter())
 
 
-# NEW: Handle role filter selection
+# Handle role filter selection - REQUIRED for search
 @dating_router.message(StateFilter(Search.role_filter), F.text)
 async def role_filter_handler(
     message: types.Message,
@@ -200,7 +200,7 @@ async def role_filter_handler(
     user: UserModel,
     session: AsyncSession,
 ) -> None:
-    """Handle role filter selection - then start search"""
+    """Handle role filter selection - REQUIRED to start search"""
     # Map button text to filter values
     role_map = {
         "🔝 Tops": "top",
@@ -218,7 +218,7 @@ async def role_filter_handler(
     current_mode = data.get("current_mode")
     hosting_filter = data.get("hosting_filter", "all")
     
-    # Start search with both filters
+    # Start search with both filters - role_filter is REQUIRED
     await start_mode_search(message, state, user, session, current_mode, hosting_filter, role_filter)
 
 
@@ -229,7 +229,7 @@ async def start_mode_search(
     session: AsyncSession,
     mode: str,
     hosting_filter: str = 'all',
-    role_filter: str = None,
+    role_filter: str = 'all',  # CHANGED: Default to 'all' instead of None
 ) -> None:
     """Start searching in specified mode with hosting filter, role filter, and age filter"""
     from app.keyboards.default.base import search_kb
@@ -241,10 +241,10 @@ async def start_mode_search(
     min_age = data.get("min_age")
     max_age = data.get("max_age")
     
-    # Temporarily override user's profile find_role if role_filter is provided
+    # CHANGED: Always use role_filter (which is now always provided)
+    # Temporarily override user's profile find_role with the selected role_filter
     original_find_role = user.profile.find_role
-    if role_filter:
-        user.profile.find_role = role_filter
+    user.profile.find_role = role_filter
     
     # Search profiles with mode, hosting filter, role filter, and age filter
     if profile_list := await search_profiles(
@@ -271,6 +271,5 @@ async def start_mode_search(
     else:
         await message.answer(mt.EMPTY_PROFILE_SEARCH(mode), reply_markup=mode_menu_kb)
     
-    # Restore original find_role (we only temporarily changed it for this search)
-    if role_filter:
-        user.profile.find_role = original_find_role
+    # Restore original find_role
+    user.profile.find_role = original_find_role

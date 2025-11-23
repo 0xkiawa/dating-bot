@@ -38,26 +38,17 @@ async def _name(message: types.Message, state: FSMContext):
     await message.answer(text=mt.ROLE, reply_markup=kb)
 
 
-# -< Role >-
+# -< Role >- UPDATED: Go directly to city instead of find_role
 @dating_router.message(StateFilter(ProfileCreate.role), F.text, filters.IsRole())
-async def _role(message: types.Message, state: FSMContext, role: str):
-    await state.set_state(ProfileCreate.find_role)
+async def _role(message: types.Message, state: FSMContext, user: UserModel, role: str):
+    await state.set_state(ProfileCreate.city)  # CHANGED: Skip find_role
     await state.update_data(role=role)
-
-    kb = RegistrationFormKb.find_role()
-    await message.answer(text=mt.FIND_ROLE, reply_markup=kb)
-
-
-# -< Find role >-
-@dating_router.message(StateFilter(ProfileCreate.find_role), F.text, filters.IsFindRole())
-async def _find_role(
-    message: types.Message, state: FSMContext, find_role: str, user: UserModel
-):
-    await state.set_state(ProfileCreate.city)
-    await state.update_data(find_role=find_role)
 
     kb = RegistrationFormKb.city(user)
     await message.answer(text=mt.CITY, reply_markup=kb)
+
+
+# REMOVED: _find_role function - No longer needed
 
 
 # -< City >-
@@ -180,13 +171,13 @@ async def _description(
 
     await state.update_data(description=description)
     
-    # NEW: Move to hosting question
+    # Move to hosting question
     await state.set_state(ProfileCreate.hosting)
     kb = RegistrationFormKb.hosting()
     await message.answer(text=mt.HOSTING, reply_markup=kb)
 
 
-# -< Hosting >- NEW
+# -< Hosting >-
 @dating_router.message(StateFilter(ProfileCreate.hosting), F.text)
 async def _hosting(
     message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession
@@ -208,11 +199,12 @@ async def _hosting(
     
     await state.clear()
 
+    # CHANGED: Set find_role to 'all' by default
     await Profile.create_or_update(
         session=session,
         id=message.from_user.id,
         role=data["role"],
-        find_role=data["find_role"],
+        find_role='all',  # CHANGED: Always default to 'all'
         photos=photos,
         name=data["name"],
         age=int(data["age"]),
@@ -221,7 +213,7 @@ async def _hosting(
         longitude=float(data["longitude"]),
         is_shared_location=bool(data["is_shared_location"]),
         description=data.get("description", ""),
-        hosting=hosting,  # NEW
+        hosting=hosting,
     )
 
     await message.answer(mt.PROFILE_CREATED)
@@ -231,9 +223,8 @@ async def _hosting(
 # -< Flow >-
 # 1. -< Name >-
 # 2. -< Role >-
-# 3. -< Find role >-
-# 4. -< City >-
-# 5. -< Age >-
-# 6. -< Photo >-
-# 7. -< Description >-
-# 8. -< Hosting >- NEW
+# 3. -< City >- (REMOVED: Find role)
+# 4. -< Age >-
+# 5. -< Photo >-
+# 6. -< Description >-
+# 7. -< Hosting >-
