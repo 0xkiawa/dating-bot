@@ -12,10 +12,7 @@ async def _incorrect_role(message: types.Message):
     await message.answer(mt.INVALID_RESPONSE)
 
 
-@dating_router.message(StateFilter(ProfileCreate.find_role))
-async def _incorrect_find_role(message: types.Message):
-    """Find role filter error"""
-    await message.answer(mt.INVALID_RESPONSE)
+# REMOVED: find_role error handler - no longer needed
 
 
 @dating_router.message(StateFilter(ProfileCreate.photo, ProfileEdit.photo))
