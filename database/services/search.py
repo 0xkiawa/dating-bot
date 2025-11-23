@@ -47,50 +47,69 @@ def calculate_age_range(age: int) -> int:
 
 def build_role_matching_conditions(user_role: str, user_find_role: str):
     """
-    Build role matching conditions:
-    - Top matches with Bottom and Verse
-    - Bottom matches with Top and Verse
-    - Verse matches with everyone (Top, Bottom, Verse)
-    - "all" preference matches everyone
+    Build role matching conditions with MUTUAL compatibility.
+    
+    Matching rules:
+    1. If I'm looking for 'all' -> I see everyone
+    2. If I'm looking for 'verse' -> I see only verse people
+    3. If I'm looking for 'top' -> I see tops and verse
+    4. If I'm looking for 'bottom' -> I see bottoms and verse
+    
+    AND the other person must also be willing to see me:
+    - If they're looking for 'all' -> they see me
+    - If they're looking for 'verse' -> they see me if I'm verse
+    - If they're looking for my specific role -> they see me
+    - Verse people looking for specific roles also see that role
     """
     
-    # What I'm looking for
+    # PART 1: What roles do I want to see?
     if user_find_role == 'all':
-        # I want everyone - so I should see all profiles regardless of their role
+        i_want_them = True  # I want to see everyone
+    elif user_find_role == 'verse':
+        i_want_them = ProfileModel.role == 'verse'
+    elif user_find_role == 'top':
         i_want_them = or_(
             ProfileModel.role == 'top',
+            ProfileModel.role == 'verse'
+        )
+    elif user_find_role == 'bottom':
+        i_want_them = or_(
             ProfileModel.role == 'bottom',
             ProfileModel.role == 'verse'
         )
-        # And they should want me (my role), verse, or all
+    else:
+        i_want_them = True  # Fallback to show all
+    
+    # PART 2: Would they want to see me?
+    if user_role == 'verse':
+        # Verse is compatible with everyone
+        other_wants_me = True
+    elif user_role == 'top':
+        # They should be looking for: top, verse, or all
         other_wants_me = or_(
-            ProfileModel.find_role == user_role,
+            ProfileModel.find_role == 'top',
             ProfileModel.find_role == 'verse',
-            ProfileModel.find_role == 'all',
+            ProfileModel.find_role == 'all'
         )
-    elif user_find_role == 'verse':
-        # I specifically want verse users
-        i_want_them = ProfileModel.role == 'verse'
-        # They should want me (my role), verse, or all
+    elif user_role == 'bottom':
+        # They should be looking for: bottom, verse, or all
         other_wants_me = or_(
-            ProfileModel.find_role == user_role,
+            ProfileModel.find_role == 'bottom',
             ProfileModel.find_role == 'verse',
-            ProfileModel.find_role == 'all',
+            ProfileModel.find_role == 'all'
         )
     else:
-        # I want specific role (top/bottom), but also accept verse
-        i_want_them = or_(
-            ProfileModel.role == user_find_role,
-            ProfileModel.role == 'verse'
-        )
-        # They should want me (my role), verse, or all
-        other_wants_me = or_(
-            ProfileModel.find_role == user_role,
-            ProfileModel.find_role == 'verse',
-            ProfileModel.find_role == 'all',
-        )
+        other_wants_me = True  # Fallback
     
-    return and_(other_wants_me, i_want_them)
+    # Combine both conditions
+    if i_want_them is True and other_wants_me is True:
+        return True  # No filtering needed
+    elif i_want_them is True:
+        return other_wants_me
+    elif other_wants_me is True:
+        return i_want_them
+    else:
+        return and_(i_want_them, other_wants_me)
 
 
 async def search_profiles(
