@@ -54,29 +54,40 @@ def build_role_matching_conditions(user_role: str, user_find_role: str):
     - "all" preference matches everyone
     """
     
-    # What the OTHER profile is looking for (must match MY role or be open to all/verse)
-    other_wants_me = or_(
-        ProfileModel.find_role == user_role,
-        ProfileModel.find_role == 'verse',
-        ProfileModel.find_role == 'all',
-    )
-    
     # What I'm looking for
     if user_find_role == 'all':
-        # I want everyone
+        # I want everyone - so I should see all profiles regardless of their role
         i_want_them = or_(
             ProfileModel.role == 'top',
             ProfileModel.role == 'bottom',
             ProfileModel.role == 'verse'
         )
+        # And they should want me (my role), verse, or all
+        other_wants_me = or_(
+            ProfileModel.find_role == user_role,
+            ProfileModel.find_role == 'verse',
+            ProfileModel.find_role == 'all',
+        )
     elif user_find_role == 'verse':
-        # I specifically want verse users, but verse also accepts everyone
+        # I specifically want verse users
         i_want_them = ProfileModel.role == 'verse'
+        # They should want me (my role), verse, or all
+        other_wants_me = or_(
+            ProfileModel.find_role == user_role,
+            ProfileModel.find_role == 'verse',
+            ProfileModel.find_role == 'all',
+        )
     else:
         # I want specific role (top/bottom), but also accept verse
         i_want_them = or_(
             ProfileModel.role == user_find_role,
             ProfileModel.role == 'verse'
+        )
+        # They should want me (my role), verse, or all
+        other_wants_me = or_(
+            ProfileModel.find_role == user_role,
+            ProfileModel.find_role == 'verse',
+            ProfileModel.find_role == 'all',
         )
     
     return and_(other_wants_me, i_want_them)
