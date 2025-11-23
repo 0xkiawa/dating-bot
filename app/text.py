@@ -232,6 +232,15 @@ Ready to make the switch?
 Who do you want to see?
 """)
 
+    # NEW: Role filter prompt
+    @property
+    def ROLE_FILTER(self):
+        return _("""
+<b>Who do you want to see?</b> 🔍
+
+Select the role preference for your search:
+""")
+
     @property
     def PROFILE_CREATED(self):
         return _("👑 <b>Profile created!</b>\n\nYou're all set! Time to start conquering. Hit 🎭 to choose your mode!")
