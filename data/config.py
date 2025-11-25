@@ -17,7 +17,7 @@ LOG_FILE_PATH = DIR / "logs" / "bot.log"
 GRAPH_FILE_PATH = DIR / "utils" / "graph.png"
 
 # Logo directory
-LOGO_DIR = DIR / "images" / "logo.png"
+LOGO_DIR = DIR / "images" / "logo.jpg"
 
 
 class TgBot:
