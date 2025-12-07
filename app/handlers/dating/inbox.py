@@ -42,8 +42,16 @@ async def _send_mutual_like_notifications(session: AsyncSession, user: UserModel
             receiver = await User.get_with_profile(session, match.receiver_id)
             await send_profile_with_dist(session=session, user=user, profile=receiver.profile)
             if receiver and receiver.profile:
-                # Генерируем ссылку и текст
-                link = generate_user_link(id=receiver.id, username=receiver.username)
+                # Get current mode for personalized message
+                current_mode = await User.get_mode(session, user.id)
+                
+                # Генерируем ссылку с персонализированным сообщением
+                link = generate_user_link(
+                    id=receiver.id, 
+                    username=receiver.username,
+                    sender_profile=user.profile,
+                    mode=current_mode
+                )
                 text = mt.LIKE_ACCEPT(user.language).format(
                     link, html.escape(receiver.profile.name)
                 )
@@ -151,7 +159,7 @@ async def _match_response(
 
     if message.text == "❤️":
         """Отправка пользователю который ответил на лайк"""
-        await like_accept(session=session, user=user, another_user=another_user, match=match_data)
+        await like_accept(session=session, user=user, another_user=another_user, match=match_data, mode=current_mode)
     elif message.text == "👎":
         pass
         await Match.update(
@@ -185,19 +193,59 @@ async def _match_response(
         await message.answer(mt.EMPTY_PROFILE_SEARCH(current_mode), reply_markup=mode_menu_kb)
 
 
-def generate_user_link(id: int, username: str = None) -> str:
+def generate_user_link(id: int, username: str = None, sender_profile=None, mode: str = None) -> str:
     """
-    Генерирует ссылку на пользователя
-    Если указан username, создается ссылка https://t.me/username,
-    иначе используется tg://user?id=id.
+    Генерирует ссылку на пользователя с персонализированным приветствием
+    
+    Args:
+        id: User ID
+        username: Username (if available)
+        sender_profile: Profile of the person sending the message (for personalization)
+        mode: Current mode (fun/dates/friends)
+    
+    Returns:
+        Telegram link with pre-filled personalized message
     """
-    if username:
-        return f"https://t.me/{username}"
-    return f"tg://user?id={id}"
+    # Build personalized intro message
+    if sender_profile and mode:
+        # Map mode to emoji/text
+        mode_text = {
+            'fun': '🔥',
+            'dates': '❤️', 
+            'friends': '🤝'
+        }
+        mode_emoji = mode_text.get(mode, '')
+        
+        # Map role to emoji
+        role_emoji = {
+            'top': '🔝',
+            'bottom': '🔽',
+            'verse': '🔄'
+        }
+        role_icon = role_emoji.get(sender_profile.role, '')
+        
+        # Build the intro message
+        intro = f"Hi! I'm {sender_profile.name} {role_icon}, a {sender_profile.role} based in {sender_profile.city}. Happy to meet you! I was looking for {mode} {mode_emoji}"
+        
+        # URL encode the message
+        from urllib.parse import quote
+        encoded_intro = quote(intro)
+        
+        if username:
+            # Use username link with pre-filled text
+            return f"https://t.me/{username}?text={encoded_intro}"
+        else:
+            # For users without username, we can't pre-fill, so just return user link
+            return f"tg://user?id={id}"
+    else:
+        # Fallback to simple link
+        if username:
+            return f"https://t.me/{username}"
+        return f"tg://user?id={id}"
 
 
 async def like_accept(
-    session: AsyncSession, user: UserModel, another_user: UserModel, match: MatchModel
+    session: AsyncSession, user: UserModel, another_user: UserModel, match: MatchModel, mode: str = None
 ):
     effect_id = EFFECTS_DICTIONARY["🎉"]
     if match.status == MatchStatus.Accepted:
@@ -206,7 +254,13 @@ async def like_accept(
         reciver = another_user
         await Match.update(session=session, id=match.id, is_active=False)
 
-        link = generate_user_link(id=reciver.id, username=reciver.username)
+        # Generate link with personalized intro
+        link = generate_user_link(
+            id=reciver.id, 
+            username=reciver.username,
+            sender_profile=sender.profile,
+            mode=mode
+        )
         text = mt.LIKE_ACCEPT(sender.language).format(link, html.escape(reciver.profile.name))
         try:
             await bot.send_message(
@@ -222,7 +276,13 @@ async def like_accept(
         await Match.update(session=session, id=match.id, status=MatchStatus.Accepted)
         await send_user_like_alert(session, sender)
 
-        link = generate_user_link(id=sender.id, username=sender.username)
+        # Generate link with personalized intro
+        link = generate_user_link(
+            id=sender.id, 
+            username=sender.username,
+            sender_profile=reciver.profile,
+            mode=mode
+        )
         text = mt.LIKE_ACCEPT(reciver.language).format(link, html.escape(sender.profile.name))
         try:
             await bot.send_message(
