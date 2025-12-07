@@ -208,14 +208,6 @@ def generate_user_link(id: int, username: str = None, sender_profile=None, mode:
     """
     # Build personalized intro message
     if sender_profile and mode:
-        # Map mode to emoji/text
-        mode_text = {
-            'fun': '🔥',
-            'dates': '❤️', 
-            'friends': '🤝'
-        }
-        mode_emoji = mode_text.get(mode, '')
-        
         # Map role to emoji
         role_emoji = {
             'top': '🔝',
@@ -224,8 +216,27 @@ def generate_user_link(id: int, username: str = None, sender_profile=None, mode:
         }
         role_icon = role_emoji.get(sender_profile.role, '')
         
-        # Build the intro message
-        intro = f"Hi! I'm {sender_profile.name} {role_icon}, a {sender_profile.role} based in {sender_profile.city}. Happy to meet you! I was looking for {mode} {mode_emoji}"
+        # Build the base intro message
+        intro = f"Hey! I'm {sender_profile.name} :) We just matched on Conqueer! I'm a {sender_profile.role} {role_icon} based in {sender_profile.city}. Great to meet you! I was looking for {mode}"
+        
+        # Add hosting info ONLY for fun mode
+        if mode == 'fun' and sender_profile.hosting:
+            hosting_text = {
+                'yes': 'I can host 🏠',
+                'no': "I can't host 🚫",
+                'airbnb': 'I do Airbnbs 🏨'
+            }
+            hosting_msg = hosting_text.get(sender_profile.hosting, '')
+            if hosting_msg:
+                intro += f". BTW, {hosting_msg}"
+        
+        # Add appropriate emoji based on mode
+        mode_emoji = {
+            'fun': ' 🔥',
+            'dates': ' ❤️', 
+            'friends': ' 🤝'
+        }
+        intro += mode_emoji.get(mode, '')
         
         # URL encode the message
         from urllib.parse import quote
@@ -242,7 +253,6 @@ def generate_user_link(id: int, username: str = None, sender_profile=None, mode:
         if username:
             return f"https://t.me/{username}"
         return f"tg://user?id={id}"
-
 
 async def like_accept(
     session: AsyncSession, user: UserModel, another_user: UserModel, match: MatchModel, mode: str = None
