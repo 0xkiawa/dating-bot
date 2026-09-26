@@ -2,6 +2,7 @@ from aiogram import types
 from aiogram.filters import Command
 from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
+from aiogram.types import ReplyKeyboardRemove
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.keyboards.inline.lang import LangCallback, lang_ikb
@@ -9,12 +10,14 @@ from app.routers import common_router
 from app.text import message_text as mt
 from database.models import UserModel
 from database.services import User
+from loader import i18n
 
 
 @common_router.message(StateFilter(None), Command("language"))
 @common_router.message(StateFilter(None), Command("lang"))
 async def _lang(message: types.Message) -> None:
     """Отображает список доступных языков и позволяет выбрать предпочтительный"""
+    await message.answer("‌", reply_markup=ReplyKeyboardRemove())
     await message.answer(mt.CHANGE_LANG, reply_markup=lang_ikb())
 
 
@@ -34,3 +37,7 @@ async def _change_lang(
         language=language,
     )
     await callback.message.edit_text(mt.DONE_CHANGE_LANG(language))
+
+    with i18n.use_locale(language):
+        from app.business.menu_service import menu
+        await menu(user.id)
