@@ -26,9 +26,11 @@ class Search(StatesGroup):
     message = State()
     hosting_filter = State()
     role_filter = State()
+    age_filter_min = State()  # NEW: age step in the browse flow
+    age_filter_max = State()  # NEW: age step in the browse flow
 
 
-# Age filter states
+# Standalone age filter states (used by the separate /age_filter command flow — unrelated to Search)
 class AgeFilter(StatesGroup):
     min_age = State()
     max_age = State()

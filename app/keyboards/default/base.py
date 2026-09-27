@@ -37,3 +37,6 @@ def mode_confirm_kb() -> ReplyKeyboardMarkup:
 
 age_filter_kb = kb_gen(["↩️"])
 hosting_kb = lambda: kb_gen(["Yes ✅", "No ❌"], ["Airbnb 🏨", "All 🌍"], ["↩️"])
+
+def age_range_search_kb() -> ReplyKeyboardMarkup:
+    return kb_gen([f"✅ {_('Use Default Matching')}"], ["↩️"])

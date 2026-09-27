@@ -5,7 +5,7 @@ from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.keyboards.default.base import mode_confirm_kb, mode_menu_kb
+from app.keyboards.default.base import mode_confirm_kb, mode_menu_kb, age_range_search_kb
 from app.routers import dating_router
 from app.states.default import Search
 from app.text import message_text as mt
@@ -75,17 +75,14 @@ async def handle_mode_switch(
     """
     current_mode = await User.get_mode(session, user.id)
     
-    # No active mode - activate new mode
     if not current_mode:
         await activate_mode(message, state, user, session, new_mode)
         return
     
-    # Same mode - show mode menu
     if current_mode == new_mode:
         await show_mode_menu(message, new_mode)
         return
     
-    # Different mode - ask confirmation
     await state.update_data(pending_mode=new_mode)
     confirm_text = mt.MODE_SWITCH_CONFIRM(current_mode, new_mode)
     await message.answer(confirm_text, reply_markup=mode_confirm_kb())
@@ -128,7 +125,6 @@ async def activate_mode(
         await message.answer(mt.MODE_ACTIVATION_ERROR)
         return
     
-    # Send mode activation message with mode menu
     mode_messages = {
         "fun": mt.MODE_FUN_ACTIVATED,
         "dates": mt.MODE_DATES_ACTIVATED,
@@ -166,7 +162,6 @@ async def browse_profiles_handler(
         await message.answer(mt.NO_MODE_SELECTED)
         return
     
-    # Show hosting filter prompt
     from app.keyboards.default.registration_form import RegistrationFormKb
     await state.set_state(Search.hosting_filter)
     await state.update_data(current_mode=current_mode)
@@ -182,7 +177,6 @@ async def hosting_filter_handler(
     session: AsyncSession,
 ) -> None:
     """Handle hosting filter selection - then ask for role filter"""
-    # Map button text to filter values
     hosting_map = {
         _("🏠 Host"): "yes",
         _("🚫 Can't Host"): "no",
@@ -195,16 +189,14 @@ async def hosting_filter_handler(
         await message.answer(mt.INVALID_OPTION)
         return
     
-    # Save hosting filter and move to role filter
     await state.update_data(hosting_filter=hosting_filter)
     await state.set_state(Search.role_filter)
     
-    # Ask for role preference
     from app.keyboards.default.registration_form import RegistrationFormKb
     await message.answer(mt.ROLE_FILTER, reply_markup=RegistrationFormKb.role_filter())
 
 
-# Handle role filter selection - REQUIRED for search
+# Handle role filter selection - now leads to AGE step instead of searching directly
 @dating_router.message(StateFilter(Search.role_filter), F.text)
 async def role_filter_handler(
     message: types.Message,
@@ -212,8 +204,7 @@ async def role_filter_handler(
     user: UserModel,
     session: AsyncSession,
 ) -> None:
-    """Handle role filter selection - REQUIRED to start search"""
-    # Map button text to filter values
+    """Handle role filter selection - then ask for age range"""
     role_map = {
         _("🔝 Tops"): "top",
         _("🔽 Bottoms"): "bottom",
@@ -226,12 +217,93 @@ async def role_filter_handler(
         await message.answer(mt.INVALID_OPTION)
         return
     
+    # Save role filter, move to age step
+    await state.update_data(role_filter=role_filter)
+    await state.set_state(Search.age_filter_min)
+    
+    await message.answer(
+        mt.AGE_RANGE_SEARCH_PROMPT,
+        reply_markup=age_range_search_kb(),
+    )
+
+
+# NEW: Handle age step - "use default" skips straight to search
+@dating_router.message(StateFilter(Search.age_filter_min), F.text == f"✅ {_('Use Default Matching')}")
+async def age_filter_use_default(
+    message: types.Message,
+    state: FSMContext,
+    user: UserModel,
+    session: AsyncSession,
+) -> None:
+    """User chose to skip custom age range - search with default (dynamic) age matching"""
     data = await state.get_data()
     current_mode = data.get("current_mode")
     hosting_filter = data.get("hosting_filter", "all")
+    role_filter = data.get("role_filter", "all")
     
-    # Start search with both filters - role_filter is REQUIRED
-    await start_mode_search(message, state, user, session, current_mode, hosting_filter, role_filter)
+    await start_mode_search(
+        message, state, user, session, current_mode, hosting_filter, role_filter,
+        min_age=None, max_age=None,
+    )
+
+
+# NEW: Handle age step - user types a minimum age
+@dating_router.message(StateFilter(Search.age_filter_min), F.text.regexp(r"^\d+$"))
+async def age_filter_min_input(
+    message: types.Message,
+    state: FSMContext,
+) -> None:
+    """User typed a minimum age - ask for maximum next"""
+    min_age = int(message.text)
+    
+    if min_age < 18 or min_age > 99:
+        await message.answer(mt.AGE_FILTER_TOO_HIGH if min_age > 99 else mt.AGE_FILTER_TOO_LOW)
+        return
+    
+    await state.update_data(search_min_age=min_age)
+    await state.set_state(Search.age_filter_max)
+    await message.answer(mt.AGE_RANGE_SEARCH_MAX_PROMPT.format(min_age=min_age))
+
+
+@dating_router.message(StateFilter(Search.age_filter_min))
+async def age_filter_min_invalid(message: types.Message) -> None:
+    await message.answer(mt.AGE_FILTER_INVALID_INPUT)
+
+
+# NEW: Handle age step - user types a maximum age, then search runs
+@dating_router.message(StateFilter(Search.age_filter_max), F.text.regexp(r"^\d+$"))
+async def age_filter_max_input(
+    message: types.Message,
+    state: FSMContext,
+    user: UserModel,
+    session: AsyncSession,
+) -> None:
+    """User typed a maximum age - run the search with full filters"""
+    max_age = int(message.text)
+    data = await state.get_data()
+    min_age = data.get("search_min_age", 18)
+    
+    if max_age < min_age:
+        await message.answer(mt.AGE_FILTER_INVALID_RANGE.format(min_age=min_age))
+        return
+    
+    if max_age > 99:
+        await message.answer(mt.AGE_FILTER_TOO_HIGH)
+        return
+    
+    current_mode = data.get("current_mode")
+    hosting_filter = data.get("hosting_filter", "all")
+    role_filter = data.get("role_filter", "all")
+    
+    await start_mode_search(
+        message, state, user, session, current_mode, hosting_filter, role_filter,
+        min_age=min_age, max_age=max_age,
+    )
+
+
+@dating_router.message(StateFilter(Search.age_filter_max))
+async def age_filter_max_invalid(message: types.Message) -> None:
+    await message.answer(mt.AGE_FILTER_INVALID_INPUT)
 
 
 async def start_mode_search(
@@ -241,24 +313,18 @@ async def start_mode_search(
     session: AsyncSession,
     mode: str,
     hosting_filter: str = 'all',
-    role_filter: str = 'all',  # CHANGED: Default to 'all' instead of None
+    role_filter: str = 'all',
+    min_age: int = None,
+    max_age: int = None,
 ) -> None:
-    """Start searching in specified mode with hosting filter, role filter, and age filter"""
+    """Start searching in specified mode with hosting, role, and age filters"""
     from app.keyboards.default.base import search_kb
     
     await message.answer(mt.SEARCH, reply_markup=search_kb)
     
-    # Get age filters from state if they exist
-    data = await state.get_data()
-    min_age = data.get("min_age")
-    max_age = data.get("max_age")
-    
-    # CHANGED: Always use role_filter (which is now always provided)
-    # Temporarily override user's profile find_role with the selected role_filter
     original_find_role = user.profile.find_role
     user.profile.find_role = role_filter
     
-    # Search profiles with mode, hosting filter, role filter, and age filter
     if profile_list := await search_profiles(
         session, 
         user.profile, 
@@ -268,7 +334,6 @@ async def start_mode_search(
         max_age=max_age,
     ):
         await state.set_state(Search.search)
-        # Save all filters in state so they persist
         await state.update_data(
             ids=profile_list, 
             current_mode=mode,
@@ -283,5 +348,4 @@ async def start_mode_search(
     else:
         await message.answer(mt.EMPTY_PROFILE_SEARCH(mode), reply_markup=mode_menu_kb())
     
-    # Restore original find_role
     user.profile.find_role = original_find_role

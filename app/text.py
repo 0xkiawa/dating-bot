@@ -227,8 +227,7 @@ Ready to make the switch?
 
 Who do you want to see?
 """)
-
-    # NEW: Role filter prompt
+         # NEW: Role filter prompt
     @property
     def ROLE_FILTER(self):
         return _("""
@@ -236,6 +235,18 @@ Who do you want to see?
 
 Select the role preference for your search:
 """)
+
+    # NEW: Age range prompt for search flow
+    @property
+    def AGE_RANGE_SEARCH_PROMPT(self):
+        return _("""
+🎂 <b>Age range?</b>
+
+Tap "Use Default Matching" for automatic age matching, or type a minimum age (18-99) for a custom range.
+""")
+
+    def AGE_RANGE_SEARCH_MAX_PROMPT(self, min_age: int):
+        return _("Minimum age: <b>{min_age}</b>\n\nNow type the maximum age:").format(min_age=min_age)
 
     @property
     def PROFILE_CREATED(self):
