@@ -261,6 +261,7 @@ async def age_filter_min_input(
         return
     
     await state.update_data(search_min_age=min_age)
+    await state.set_state(Search.age_filter_max)
     await message.answer(mt.AGE_RANGE_SEARCH_MAX_PROMPT(min_age))
     
 
@@ -284,7 +285,7 @@ async def age_filter_max_input(
     min_age = data.get("search_min_age", 18)
     
     if max_age < min_age:
-        await message.answer(mt.AGE_FILTER_INVALID_RANGE.format(min_age=min_age))
+        await message.answer(mt.AGE_FILTER_INVALID_RANGE(min_age))
         return
     
     if max_age > 99:
