@@ -205,11 +205,11 @@ async def role_filter_handler(
     session: AsyncSession,
 ) -> None:
     """Handle role filter selection - then ask for age range"""
-    role_map = {
-        _("🔝 Tops"): "top",
-        _("🔽 Bottoms"): "bottom",
-        _("🔄 Verse"): "verse",
-        _("👁️ Everyone"): "all"
+        role_map = {
+        _("🍆 Tops"): "top",
+        _("🍑 Bottoms"): "bottom",
+        _("🍆🍑💦 Verse"): "verse",
+        _("👬 Everyone"): "all"
     }
     
     role_filter = role_map.get(message.text)

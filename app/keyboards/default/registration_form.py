@@ -134,12 +134,12 @@ class RegistrationFormKb:
             resize_keyboard=True,
             keyboard=[
                 [
-                    KeyboardButton(text=_("🔝 Tops")),
-                    KeyboardButton(text=_("🔽 Bottoms")),
+                    KeyboardButton(text=_("🍆 Tops")),
+                    KeyboardButton(text=_("🍑 Bottoms")),
                 ],
                 [
-                    KeyboardButton(text=_("🔄 Verse")),
-                    KeyboardButton(text=_("👁️ Everyone")),
+                    KeyboardButton(text=_("🍆🍑💦 Verse")),
+                    KeyboardButton(text=_("👬 Everyone")),
                 ],
             ],
         )
