@@ -261,8 +261,8 @@ async def age_filter_min_input(
         return
     
     await state.update_data(search_min_age=min_age)
-    await state.set_state(Search.age_filter_max)
-    await message.answer(mt.AGE_RANGE_SEARCH_MAX_PROMPT.format(min_age=min_age))
+    await message.answer(mt.AGE_RANGE_SEARCH_MAX_PROMPT(min_age))
+    
 
 
 @dating_router.message(StateFilter(Search.age_filter_min))
