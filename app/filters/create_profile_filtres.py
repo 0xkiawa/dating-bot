@@ -2,6 +2,7 @@
 from aiogram.filters import Filter
 from aiogram.types import Message
 
+from loader import _
 from utils.geopy import get_city_name, get_coordinates
 
 ROLE_MAP = {
@@ -37,22 +38,28 @@ SAVE_PHOTO_OPTIONS = (
 )
 
 
+def localized_options(options: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(_(option) for option in options)
+
+
 class IsCreate(Filter):
     async def __call__(self, message: Message) -> bool:
-        return bool(message.text in START_COMMAND_OPTIONS)
+        return bool(message.text == "/create" or message.text == _("Create a profile"))
 
 
 class IsRole(Filter):
     async def __call__(self, message: Message) -> dict | bool:
-        if message.text in ROLE_MAP:
-            return {"role": ROLE_MAP[message.text]}
+        role_map = {_(label): value for label, value in ROLE_MAP.items()}
+        if message.text in role_map:
+            return {"role": role_map[message.text]}
         return False
 
 
 class IsFindRole(Filter):
     async def __call__(self, message: Message) -> dict | bool:
-        if message.text in FIND_ROLE_MAP:
-            return {"find_role": FIND_ROLE_MAP[message.text]}
+        role_map = {_(label): value for label, value in FIND_ROLE_MAP.items()}
+        if message.text in role_map:
+            return {"find_role": role_map[message.text]}
         return False
 
 
@@ -60,8 +67,8 @@ class IsPhoto(Filter):
     async def __call__(self, message: Message) -> bool:
         return bool(
             message.photo
-            or message.text in LEAVE_PREVIOUS_OPTIONS
-            or message.text in SAVE_PHOTO_OPTIONS
+            or message.text in localized_options(LEAVE_PREVIOUS_OPTIONS)
+            or message.text in localized_options(SAVE_PHOTO_OPTIONS)
         )
 
 
@@ -90,7 +97,7 @@ class IsCity(Filter):
         if message.text:
             if message.text.isdigit() and len(message.text) <= 1:
                 return False
-            if message.text in LEAVE_PREVIOUS_OPTIONS:
+            if message.text in localized_options(LEAVE_PREVIOUS_OPTIONS):
                 pass
             elif coordinates := get_coordinates(message.text):
                 latitude = coordinates[0]
@@ -111,7 +118,7 @@ class IsCity(Filter):
 class IsDescription(Filter):
     async def __call__(self, message: Message) -> bool:
         return bool(
-            len(message.text) < 900 or message.text in SKIP_OPTIONS,
+            len(message.text) < 900 or message.text in localized_options(SKIP_OPTIONS),
         )
 
 

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: bot VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-09-08 17:45+0300\n"
+"POT-Creation-Date: 2026-09-27 13:01+0300\n"
 "PO-Revision-Date: 2025-08-15 17:52+0300\n"
 "Last-Translator: \n"
 "Language: fr\n"
@@ -18,420 +18,974 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: app/text.py:12
+#: app/text.py:13
 msgid ""
 "\n"
-"Привет! 👋\n"
+"Hey there! 👋🌈\n"
 "\n"
-"Добро пожаловать в наш бот знакомств Michi! 💕\n"
-"Чтобы начать, создай свой профиль — это просто и быстро.\n"
+"Welcome to <b>CONQUEER</b> — where queer kings conquer connections! 💪✨\n"
 "\n"
-"Желаем тебе приятных знакомств и интересных встреч!\n"
+"Whether you're ready to:\n"
+"🍆👅🍑💦 <b>Fun Mode</b> — Casual hookups and wild nights\n"
+"❤️🥂 <b>Dating Mode</b> — Find your king or prince\n"
+"🤝 <b>Friends Mode</b> — Build your chosen family\n"
+"\n"
+"Your kingdom awaits! Create your profile and start conquering.\n"
+"\n"
+"<i>Be bold. Be proud. Be you.</i> 🏳️‍🌈\n"
 msgstr ""
 "\n"
-"Salut ! 👋\n"
+"Salut ! 👋🌈\n"
 "\n"
-"Bienvenue dans notre bot de rencontres Michi ! 💕\n"
-"Pour commencer, crée ton profil — c'est simple et rapide.\n"
+"Bienvenue sur <b>CONQUEER</b> — là où les rois queer conquièrent des "
+"connexions ! 💪✨\n"
 "\n"
-"Nous te souhaitons de belles rencontres et des rendez-vous intéressants !"
+"Que tu sois prêt pour :\n"
+"🍆👅🍑💦 <b>Mode Fun</b> — Plans cul et nuits torrides\n"
+"❤️🥂 <b>Mode Dating</b> — Trouve ton roi ou ton prince\n"
+"🤝 <b>Mode Friends</b> — Construis ta famille de cœur\n"
 "\n"
+"Ton royaume t'attend ! Crée ton profil et pars à la conquête.\n"
+"\n"
+"<i>Sois audacieux. Sois fier. Sois toi-même.</i> 🏳️‍🌈\n"
 
-#: app/text.py:23
+#: app/text.py:30
 msgid ""
 "\n"
-"👋\n"
-"Немного информации о боте:\n"
-"Этот бот был создан по аналогии с популярным ботом для знакомств <a "
-"href='https://t.me/leomatchbot?start=i_VwRd0'>Дайвинчик</a>\n"
-"Весь код бота открыт и доступен на <a href='https://github.com/devvsima"
-"/dating-bot'>GitHub</a>\n"
+"🌈 <b>About CONQUEER</b>\n"
 "\n"
-"По вопросам и предложениям можно писать сюда: @devvsima.\n"
+"Your platform to conquer the dating scene — built by queer men, for queer"
+" men.\n"
+"\n"
+"<b>Three Modes. Infinite Possibilities:</b>\n"
+"🍆👅🍑💦 <b>Fun Mode</b> — No strings, just vibes\n"
+"❤️🥂 <b>Dating Mode</b> — Find something real\n"
+"🤝 <b>Friends Mode</b> — Your queer tribe\n"
+"\n"
+"<b>Conquer On Your Terms:</b>\n"
+"- Choose your role: Top, Bottom, or Verse\n"
+"- Filter by age range and hosting\n"
+"- Location-based matching\n"
+"- Safe, private, and judgment-free\n"
+"\n"
+"Now go forth and conquer! 👑\n"
 msgstr ""
 "\n"
-"👋\n"
-"Quelques informations sur le robot :\n"
+"🌈 <b>À propos de CONQUEER</b>\n"
 "\n"
-"Ce robot a été créé à l'instar d'un robot de rencontre populaire <a "
-"href='https://t.me/leomatchbot?start=i_VwRd0'>Leo</a>\n"
-"Tout le code du robot est ouvert et disponible à l'adresse suivante <a "
-"href='https://github.com/devvsima/dating-bot'>GitHub</a>\n"
+"Ta plateforme pour conquérir le monde des rencontres — conçue par des "
+"hommes queer, pour des hommes queer.\n"
 "\n"
-"Pour toute question ou suggestion, vous pouvez écrire ici @devvsima.\n"
+"<b>Trois modes. Des possibilités infinies :</b>\n"
+"🍆👅🍑💦 <b>Mode Fun</b> — Sans prise de tête, que du plaisir\n"
+"❤️🥂 <b>Mode Dating</b> — Trouve une vraie connexion\n"
+"🤝 <b>Mode Friends</b> — Ta communauté queer\n"
+"\n"
+"<b>Conquiers à tes conditions :</b>\n"
+"- Choisis ton rôle : Top, Bottom ou Versatile\n"
+"- Filtre par tranche d'âge et hébergement\n"
+"- Matchs par localisation\n"
+"- Sûr, privé et sans jugement\n"
+"\n"
+"Maintenant, pars à la conquête ! 👑\n"
 
-#: app/text.py:34
+#: app/text.py:52
 msgid ""
 "\n"
-"🔍 Смотреть анкеты\n"
-"👤 Моя анкета\n"
-"📭 Кто меня лайкнул\n"
+"<b>CONQUEER Command Center</b> 👑\n"
 "\n"
-"✉️ Пригласить друзей"
+"👤 My Profile — Own your presence\n"
+"✉️ Invite Friends — Expand the kingdom\n"
+"🎭 Enter Mode — Start conquering\n"
 msgstr ""
 "\n"
-"🔍 Voir les profils\n"
-"👤 Mon profil\n"
-"📭 Qui m'a aimé\n"
+"<b>Centre de Commandement CONQUEER</b> 👑\n"
 "\n"
-"✉️ Inviter des amis"
+"👤 Mon profil — Assume ta présence\n"
+"✉️ Inviter des amis — Agrandis le royaume\n"
+"🎭 Choisir un mode — Pars à la conquête\n"
 
-#: app/text.py:43
+#: app/text.py:63
 msgid ""
 "\n"
-"🔄 Заполнить анкету заново\n"
-"🖼 Изменить фотографию\n"
-"✍️ Изменить описание\n"
-"❌ Отключить анкету\n"
+"🎭 <b>Choose Your Conquest</b>\n"
 "\n"
-"↩️ Назад\n"
+"What are you hunting for today?\n"
+"\n"
+"Pick your mode and start browsing:\n"
 msgstr ""
 "\n"
-"🔄 Remplir à nouveau le questionnaire\n"
-"🖼 Modifier la photo\n"
+"🎭 <b>Choisis ta conquête</b>\n"
+"\n"
+"Que recherches-tu aujourd'hui ?\n"
+"\n"
+"Choisis ton mode et commence à explorer :\n"
+
+#: app/text.py:74
+msgid ""
+"\n"
+"🍆👅🍑💦 <b>Fun Mode Active</b>\n"
+"\n"
+"Ready to play?\n"
+"\n"
+"🔍 - Browse hot matches\n"
+"📭 - See who wants you\n"
+"🎂 - Set age range\n"
+"🏠 - Set hosting preference\n"
+"💤 - Return to main menu\n"
+msgstr ""
+"\n"
+"🍆👅🍑💦 <b>Mode Fun Actif</b>\n"
+"\n"
+"Prêt à jouer ?\n"
+"\n"
+"🔍 - Découvrir des profils chauds\n"
+"📭 - Voir qui te désire\n"
+"🎂 - Définir la tranche d'âge\n"
+"🏠 - Préférence de logement\n"
+"💤 - Retour au menu principal\n"
+
+#: app/text.py:88
+msgid ""
+"\n"
+"❤️🥂 <b>Dating Mode Active</b>\n"
+"\n"
+"Looking for something real?\n"
+"\n"
+"🔍 - Browse potential matches\n"
+"📭 - See who's interested\n"
+"🎂 - Set age range\n"
+"🏠 - Set hosting preference\n"
+"💤 - Return to main menu\n"
+msgstr ""
+"\n"
+"❤️🥂 <b>Mode Dating Actif</b>\n"
+"\n"
+"Tu cherches du sérieux ?\n"
+"\n"
+"🔍 - Découvrir des profils compatibles\n"
+"📭 - Voir qui s'intéresse à toi\n"
+"🎂 - Définir la tranche d'âge\n"
+"🏠 - Préférence de logement\n"
+"💤 - Retour au menu principal\n"
+
+#: app/text.py:102
+msgid ""
+"\n"
+"🤝 <b>Friends Mode Active</b>\n"
+"\n"
+"Building your tribe?\n"
+"\n"
+"🔍 - Browse friendly faces\n"
+"📭 - See who reached out\n"
+"🎂 - Set age range\n"
+"🏠 - Set hosting preference\n"
+"💤 - Return to main menu\n"
+msgstr ""
+"\n"
+"🤝 <b>Mode Friends Actif</b>\n"
+"\n"
+"Tu veux élargir ton cercle ?\n"
+"\n"
+"🔍 - Découvrir des visages amicaux\n"
+"📭 - Voir qui t'a contacté\n"
+"🎂 - Définir la tranche d'âge\n"
+"🏠 - Préférence de logement\n"
+"💤 - Retour au menu principal\n"
+
+#: app/text.py:116
+msgid ""
+"\n"
+"<b>Profile Management</b> 👤\n"
+"\n"
+"🔄 Recreate profile\n"
+"🖼 Change photo\n"
+"✍️ Change description\n"
+"❌ Disable profile\n"
+"\n"
+"↩️ Back\n"
+msgstr ""
+"\n"
+"<b>Gestion du profil</b> 👤\n"
+"\n"
+"🔄 Recréer le profil\n"
+"🖼 Changer de photo\n"
 "✍️ Modifier la description\n"
-"❌ Désactiver le questionnaire\n"
+"❌ Désactiver le profil\n"
 "\n"
 "↩️ Retour\n"
 
-#: app/text.py:54
-msgid "Неизвестная команда. Если заблудился, напиши /start."
-msgstr "Commande inconnue. Si vous vous perdez, écrivez /start."
+#: app/text.py:129
+msgid "Unknown command, king. Type /start to get back on track. 👑"
+msgstr "Commande inconnue, roi. Tape /start pour revenir au menu. 👑"
 
-#: app/text.py:59
-msgid "Укажи, свой пол: 👤"
-msgstr "Indiquez votre sexe: 👤"
-
-#: app/text.py:63
-msgid "Выбери, кого ты ищешь: 💕"
-msgstr "Choisissez qui vous cherchez 💕"
-
-#: app/text.py:67
-msgid "Загрузи своё фото! Можно отправить до 3 фотографий одновременно 📸"
-msgstr ""
-"Téléchargez votre photo ! Vous pouvez envoyer jusqu'à 3 photos en même "
-"temps 📸"
-
-#: app/text.py:71
-msgid "Как тебя зовут? ✍️"
-msgstr "Quel est votre nom ? ✍️"
-
-#: app/text.py:75
-msgid "Сколько тебе лет? 🎂"
-msgstr "Quel âge avez-vous ? 🎂"
-
-#: app/text.py:79
-msgid "Укажи свой город: 🏙️"
-msgstr "Saisissez votre ville: 🏙️"
-
-#: app/text.py:83
-msgid "Расскажи немного о себе — это поможет другим узнать тебя лучше! 📝"
-msgstr "Parle-nous un peu de toi, ça aidera les autres à mieux te connaître ! 📝"
-
-#: app/text.py:87
-msgid ""
-"Отлично! Твой профиль готов — теперь можешь искать интересных для себя "
-"людей 💬"
-msgstr ""
-"Génial ! Votre profil est prêt - vous pouvez maintenant rechercher des "
-"personnes intéressantes 💬"
-
-#: app/text.py:91
+#: app/text.py:134
 msgid ""
 "\n"
-"❌ Твоя анкета отключена, некоторые функции теперь недоступны.\n"
-"💬 Чтобы снова активировать анкету, отправь команду /start."
+"🍆👅🍑💦 <b>Fun Mode Activated!</b>\n"
+"\n"
+"Time to play! You're now browsing guys looking for casual hookups and "
+"steamy encounters.\n"
+"\n"
+"Who's ready for you tonight? Let's find out! 🔥\n"
 msgstr ""
 "\n"
-"❌ Votre profil est désactivé, certaines fonctionnalités ne sont plus "
-"disponibles.\n"
-"💬 Pour réactiver votre profil, envoyez la commande /start."
-
-#: app/text.py:97
-msgid ""
-"✅ Твоя анкета успешно восстановлена! Теперь ты снова можешь пользоваться "
-"ботом."
-msgstr ""
-"✅ Votre profil a été restauré avec succès ! Vous pouvez maintenant "
-"utiliser le bot à nouveau."
-
-#: app/text.py:102
-msgid "🔍 Выполняется поиск..."
-msgstr "🔍 Recherche..."
-
-#: app/text.py:106
-#, python-brace-format
-msgid "Твоя анкета понравилась {} людям! Давай посмотрим, кто это:"
-msgstr "Votre profil a été aimé par {} personnes ! Voyons de qui il s'agit :"
-
-#: app/text.py:110
-msgid "Подходящих анкет не найдено. Попробуй выбрать другой город. 🌍"
-msgstr ""
-"Aucun profil correspondant n'a été trouvé. Essayez de choisir une autre "
-"ville. 🌍"
-
-#: app/text.py:114
-msgid "Анкеты закончились. Попробуй позже! 😊"
-msgstr "Les questionnaires sont terminés. Réessayez plus tard ! 😊"
-
-#: app/text.py:119
-#, python-brace-format
-msgid ""
-"Твоя анкета получила <b>{}</b> ❤️\n"
+"🍆👅🍑💦 <b>Mode Fun activé !</b>\n"
 "\n"
-"📭 Нажми, чтобы посмотреть"
-msgstr ""
-"Votre profil a obtenu <b>{}</b> ❤️\n"
+"C'est l'heure de jouer ! Tu découvres maintenant des mecs chauds pour des"
+" plans cul sans lendemain.\n"
 "\n"
-"📭 Click to view"
-
-#: app/text.py:125
-msgid "Пока никто не поставил тебе лайк, но всё ещё впереди!"
-msgstr "Personne ne t'a encore liké, mais tout est encore possible !"
-
-#: app/text.py:128
-#, python-brace-format
-msgid "Надеюсь вы хорошо проведете время ;) <a href='{}'>{}</a>"
-msgstr "J'espère que vous passerez un bon moment ;) <a href='{}'>{}</a>"
-
-#: app/text.py:132
-#, python-brace-format
-msgid ""
-"На ваш лайк ответили взаимно, надеюсь вы хорошо проведете время ;) <a "
-"href='{}'>{}</a>"
-msgstr ""
-"Votre like a été réciproque, j'espère que vous passerez un bon moment ;) "
-"<a href='{}'>{}</a>"
-
-#: app/text.py:138
-#, python-brace-format
-msgid ""
-"Сообщение для тебя:\n"
-"{}"
-msgstr ""
-"Message pour toi :\n"
-"{}"
+"Qui est prêt pour toi ce soir ? Découvrons-le ! 🔥\n"
 
 #: app/text.py:144
 msgid ""
-"Можешь написать пользователю, до 250 символов. ✉️\n"
 "\n"
-"Если не хочешь писать, нажми на кнопку ниже."
+"❤️🥂 <b>Dating Mode Activated!</b>\n"
+"\n"
+"Looking for something deeper? You're now browsing guys seeking meaningful"
+" connections and romance.\n"
+"\n"
+"Your match might be one swipe away! 💕\n"
 msgstr ""
-"Vous pouvez écrire au utilisateur, jusqu'à 250 caractères. ✉️\n"
 "\n"
-"Si vous ne souhaitez pas écrire, cliquez sur le bouton ci-dessous."
+"❤️🥂 <b>Mode Dating activé !</b>\n"
+"\n"
+"Envie de sentiments sincères ? Tu découvres maintenant des mecs à la "
+"recherche d'amour et de romance.\n"
+"\n"
+"Ton âme sœur n'est peut-être qu'à un swipe ! 💕\n"
 
-#: app/text.py:149
-msgid "Отправил сообщение, ждем ответа."
-msgstr "J'ai envoyé un message, j'attends une réponse."
-
-#: app/text.py:153
-msgid "Не корректное сообщение. Пожалуйста, напиши до 250 символов."
-msgstr "Message incorrect. Veuillez écrire jusqu'à 250 caractères."
-
-#: app/text.py:157
-msgid "Хорошо, ничего не буду отправлять."
-msgstr "D'accord, je n'enverrai rien."
-
-#: app/text.py:162
+#: app/text.py:154
 msgid ""
-"Некорректный ответ. Пожалуйста, выбери на клавиатуре или напиши "
-"правильно. 📝"
+"\n"
+"🤝 <b>Friends Mode Activated!</b>\n"
+"\n"
+"Building your tribe! You're now browsing guys looking for genuine "
+"friendships and community.\n"
+"\n"
+"Let's expand your chosen family! 🌈\n"
 msgstr ""
-"Réponse incorrecte. Veuillez sélectionner sur votre clavier ou l'écrire "
-"correctement. 📝"
+"\n"
+"🤝 <b>Mode Friends activé !</b>\n"
+"\n"
+"Construis ta tribu ! Tu découvres maintenant des mecs à la recherche "
+"d'amitiés sincères et d'entraide.\n"
+"\n"
+"Agrandissons ta famille de cœur ! 🌈\n"
+
+#: app/text.py:164
+msgid "Fun"
+msgstr "Fun"
+
+#: app/text.py:164
+msgid "Dating"
+msgstr "Rencontres"
+
+#: app/text.py:164
+msgid "Friends"
+msgstr "Amis"
 
 #: app/text.py:166
-msgid "Превышен лимит символов. Пожалуйста, сократи сообщение. ✂️"
-msgstr "La limite de caractères a été dépassée. Veuillez raccourcir le message. ✂️"
+msgid "casual hookups and fun"
+msgstr "plans cul et amusement"
 
-#: app/text.py:170
-msgid "Такой город не найдет :("
-msgstr "Vous ne trouverez pas de ville comme celle-ci :("
+#: app/text.py:167
+msgid "romantic connections"
+msgstr "relations romantiques"
 
-#: app/text.py:175
-msgid ""
-"Неверный формат фотографии! Пожалуйста, загрузите изображение в "
-"правильном формате. 🖼️"
-msgstr ""
-"Format d'image incorrect ! Veuillez télécharger l'image dans le bon "
-"format. 🖼️"
+#: app/text.py:168
+msgid "platonic friendships"
+msgstr "amitiés sincères"
 
-#: app/text.py:180
-msgid "Неверный формат, возраст нужно указывать цифрами. 🔢"
-msgstr "Format incorrect, l'âge doit être indiqué en chiffres. 🔢"
-
-#: app/text.py:185
+#: app/text.py:171
 #, python-brace-format
 msgid ""
-"Приглашай друзей и получай бонусы!\n"
 "\n"
-"Приглашенные пользователи: <b>{}</b>\n"
+"{new_icon} <b>Switch to {new_name} Mode?</b>\n"
 "\n"
-"Ссылка для друзей:\n"
-"<code>{}</code>"
+"You're currently in <b>{current_name} mode</b>. Switching to "
+"<b>{new_name} mode</b> will show you guys looking for "
+"<b>{new_description}</b> instead.\n"
+"\n"
+"Ready to make the switch?\n"
 msgstr ""
-"Invitez vos amis et obtenez des bonus !\n"
+"\n"
+"{new_icon} <b>Passer en mode {new_name} ?</b>\n"
+"\n"
+"Tu es actuellement en <b>mode {current_name}</b>. Passer en <b>mode "
+"{new_name}</b> te montrera des mecs qui cherchent "
+"<b>{new_description}</b>.\n"
+"\n"
+"Prêt à changer ?\n"
+
+#: app/text.py:186
+msgid "Staying put! Back to your current mode. 👍"
+msgstr "On reste là ! Retour à ton mode actuel. 👍"
+
+#: app/text.py:191
+msgid ""
+"What's your position? 🔥\n"
+"\n"
+"Top, Bottom, or Verse?"
+msgstr ""
+"Quelle est ta position ? 🔥\n"
+"\n"
+"Top, Bottom ou Versatile ?"
+
+#: app/text.py:195
+msgid ""
+"Who are you looking for? 💕\n"
+"\n"
+"Top, Bottom, Verse, or All?"
+msgstr ""
+"Qui recherches-tu ? 💕\n"
+"\n"
+"Tops, Bottoms, Versatiles ou Tous ?"
+
+#: app/text.py:199
+msgid ""
+"Show yourself! 📸\n"
+"\n"
+"Upload up to 3 photos (make it count!)"
+msgstr ""
+"Montre-toi ! 📸\n"
+"\n"
+"Envoie jusqu'à 3 photos (choisis les meilleures !)"
+
+#: app/text.py:203
+msgid "What should we call you? ✍️"
+msgstr "Comment doit-on t'appeler ? ✍️"
+
+#: app/text.py:207
+msgid "How old are you, king? 🎂"
+msgstr "Quel âge as-tu, roi ? 🎂"
+
+#: app/text.py:211
+msgid "What city do you reign in? 🏙️"
+msgstr "Dans quelle ville règnes-tu ? 🏙️"
+
+#: app/text.py:215
+msgid ""
+"Tell us about yourself! 📝\n"
+"\n"
+"What makes you... you? (This is your chance to shine!)"
+msgstr ""
+"Parle-nous de toi ! 📝\n"
+"\n"
+"Qu'est-ce qui te rend unique ? (C'est ton moment de briller !)"
+
+#: app/text.py:220
+msgid ""
+"Can you host? 🏠\n"
+"\n"
+"(Important for Fun mode!)"
+msgstr ""
+"Peux-tu recevoir ? 🏠\n"
+"\n"
+"(Important pour le mode Fun !)"
+
+#: app/text.py:225
+msgid ""
+"\n"
+"<b>Hosting Preference?</b> 🏠\n"
+"\n"
+"Who do you want to see?\n"
+msgstr ""
+"\n"
+"<b>Préférence de logement ?</b> 🏠\n"
+"\n"
+"Qui veux-tu voir ?\n"
+
+#: app/text.py:234
+msgid ""
+"\n"
+"<b>Who do you want to see?</b> 🔍\n"
+"\n"
+"Select the role preference for your search:\n"
+msgstr ""
+"\n"
+"<b>Qui veux-tu voir ?</b> 🔍\n"
+"\n"
+"Sélectionne la position souhaitée pour ta recherche :\n"
+
+#: app/text.py:242
+msgid ""
+"👑 <b>Profile created!</b>\n"
+"\n"
+"You're all set! Time to start conquering. Hit 🎭 to choose your mode!"
+msgstr ""
+"👑 <b>Profil créé !</b>\n"
+"\n"
+"Tout est prêt ! C'est le moment de conquérir. Appuie sur 🎭 pour choisir "
+"ton mode !"
+
+#: app/text.py:246
+msgid ""
+"\n"
+"❌ <b>Profile disabled</b>\n"
+"\n"
+"Your profile is now hidden and some features are unavailable.\n"
+"\n"
+"Want to come back? Just send /start to reactivate!\n"
+msgstr ""
+"\n"
+"❌ <b>Profil désactivé</b>\n"
+"\n"
+"Ton profil est désormais masqué et certaines fonctionnalités sont "
+"indisponibles.\n"
+"\n"
+"Tu veux revenir ? Envoie simplement /start pour le réactiver !\n"
+
+#: app/text.py:256
+msgid ""
+"✅ <b>Welcome back, king!</b>\n"
+"\n"
+"Your profile is active again. Let's conquer! 👑"
+msgstr ""
+"✅ <b>Bon retour parmi nous, roi !</b>\n"
+"\n"
+"Ton profil est de nouveau actif. C'est reparti ! 👑"
+
+#: app/text.py:260
+msgid "🔍 <b>Searching for matches...</b>"
+msgstr "🔍 <b>Recherche de profils en cours...</b>"
+
+#: app/text.py:264
+#, python-brace-format
+msgid ""
+"📬 <b>{} guys liked your profile!</b>\n"
+"\n"
+"Let's see who they are:"
+msgstr ""
+"📬 <b>{} mecs ont aimé ton profil !</b>\n"
+"\n"
+"Voyons qui ils sont :"
+
+#: app/text.py:269
+msgid ""
+"No matches found in this mode. Try adjusting your filters or check back "
+"later! 🌍"
+msgstr ""
+"Aucun profil trouvé dans ce mode. Ajuste tes filtres ou reviens plus tard"
+" ! 🌍"
+
+#: app/text.py:273
+msgid ""
+"🍆 <b>No more profiles in Fun mode!</b>\n"
+"\n"
+"Try changing your age/hosting filters or check back later for fresh meat!"
+" 🔥"
+msgstr ""
+"🍆 <b>Plus de profils en mode Fun !</b>\n"
+"\n"
+"Modifie tes filtres d'âge/hébergement ou reviens plus tard ! 🔥"
+
+#: app/text.py:275
+msgid ""
+"❤️ <b>No more profiles in Dating mode!</b>\n"
+"\n"
+"Adjust your filters or come back soon — your match might be just around "
+"the corner! 💕"
+msgstr ""
+"❤️ <b>Plus de profils en mode Dating !</b>\n"
+"\n"
+"Ajuste tes filtres ou reviens bientôt — ton crush est peut-être tout près"
+" ! 💕"
+
+#: app/text.py:277
+msgid ""
+"🤝 <b>No more profiles in Friends mode!</b>\n"
+"\n"
+"Tweak your filters or check back later to grow your tribe! 🌈"
+msgstr ""
+"🤝 <b>Plus de profils en mode Friends !</b>\n"
+"\n"
+"Ajuste tes filtres ou reviens plus tard pour élargir ta tribu ! 🌈"
+
+#: app/text.py:278
+msgid ""
+"😔 <b>No more profiles right now!</b>\n"
+"\n"
+"Adjust your filters (age/hosting) or try again later!"
+msgstr ""
+"😔 <b>Plus de profils pour le moment !</b>\n"
+"\n"
+"Ajuste tes filtres (âge/hébergement) ou réessaie plus tard !"
+
+#: app/text.py:282
+#, python-brace-format
+msgid ""
+"🔥 <b>You got {} likes!</b>\n"
+"\n"
+"📭 Tap to see who's interested"
+msgstr ""
+"🔥 <b>Tu as reçu {} likes !</b>\n"
+"\n"
+"📭 Appuie pour voir qui est intéressé"
+
+#: app/text.py:289
+msgid "🍆 No one's crushed on you in Fun mode yet... but the night is young! 🔥"
+msgstr "🍆 Pas encore de like en mode Fun... mais la nuit ne fait que commencer ! 🔥"
+
+#: app/text.py:291
+msgid ""
+"❤️ No one's swiped right in Dating mode yet... but your person is out "
+"there! 💕"
+msgstr ""
+"❤️ Pas encore de like en mode Dating... mais la bonne personne t'attend !"
+" 💕"
+
+#: app/text.py:293
+msgid "🤝 No friend requests in Friends mode yet... but your tribe is forming! 🌈"
+msgstr "🤝 Pas encore de demandes en mode Friends... mais ta communauté grandit ! 🌈"
+
+#: app/text.py:294
+msgid "📭 Your inbox is empty... for now! Keep conquering! 👑"
+msgstr ""
+"📭 Ta boîte de réception est vide... pour l'instant ! Continue tes "
+"conquêtes ! 👑"
+
+#: app/text.py:298
+#, python-brace-format
+msgid ""
+"🎉 <b>It's a match!</b>\n"
+"\n"
+"Go conquer together: <a href='{}'>{}</a>"
+msgstr ""
+"🎉 <b>C'est un match !</b>\n"
+"\n"
+"Partez à la conquête ensemble : <a href='{}'>{}</a>"
+
+#: app/text.py:304
+#, python-brace-format
+msgid ""
+"💌 <b>Message for you:</b>\n"
+"\n"
+"{}"
+msgstr ""
+"💌 <b>Message pour toi :</b>\n"
+"\n"
+"{}"
+
+#: app/text.py:309
+msgid ""
+"✉️ <b>Send a message</b> (up to 250 characters)\n"
+"\n"
+"Make it count! Or skip with the button below."
+msgstr ""
+"✉️ <b>Envoie un message</b> (jusqu'à 250 caractères)\n"
+"\n"
+"Fais bonne impression ! Ou passe avec le bouton ci-dessous."
+
+#: app/text.py:314
+msgid "✅ Message sent! Now we wait... 🤞"
+msgstr "✅ Message envoyé ! Maintenant, on attend... 🤞"
+
+#: app/text.py:318
+msgid "⚠️ Message too long! Keep it under 250 characters."
+msgstr "⚠️ Message trop long ! Moins de 250 caractères s'il te plaît."
+
+#: app/text.py:322
+msgid "❌ Message cancelled. Moving on!"
+msgstr "❌ Message annulé. On passe à la suite !"
+
+#: app/text.py:327
+msgid "⚠️ Invalid choice. Use the keyboard or type correctly! 📝"
+msgstr "⚠️ Choix invalide. Utilise le clavier ou écris correctement ! 📝"
+
+#: app/text.py:331
+msgid "⚠️ Too long! Shorten your message. ✂️"
+msgstr "⚠️ Trop long ! Raccourcis ton message. ✂️"
+
+#: app/text.py:335
+msgid "🌍 City not found. Try again with a different spelling!"
+msgstr "🌍 Ville non trouvée. Réessaie avec une autre orthographe !"
+
+#: app/text.py:339
+msgid "⚠️ Invalid photo format! Please upload a proper image. 🖼️"
+msgstr "⚠️ Format de photo invalide ! Envoie une image valide. 🖼️"
+
+#: app/text.py:343
+msgid "⚠️ Age must be a number! 🔢"
+msgstr "⚠️ L'âge doit être un nombre ! 🔢"
+
+#: app/text.py:348
+#, python-brace-format
+msgid ""
+"📢 <b>Spread the word!</b>\n"
+"\n"
+"Invited users: <b>{}</b>\n"
+"\n"
+"Your invite link:\n"
+"<code>{}</code>\n"
+"\n"
+"Help grow the kingdom! 👑"
+msgstr ""
+"📢 <b>Fais passer le mot !</b>\n"
 "\n"
 "Utilisateurs invités : <b>{}</b>\n"
 "\n"
-"Amis Lien :\n"
-"<code>{}</code>"
+"Ton lien d'invitation :\n"
+"<code>{}</code>\n"
+"\n"
+"Aide à agrandir le royaume ! 👑"
 
-#: app/text.py:190
+#: app/text.py:353
 #, python-brace-format
 msgid ""
-"Наш канал:\n"
+"📺 <b>Our channel:</b>\n"
 "{}"
 msgstr ""
-"Notre chaîne :\n"
+"📺 <b>Notre canal :</b>\n"
 "{}"
 
-#: app/text.py:195
-msgid "Выбери язык бота, на который хочешь переключиться: 🌐"
-msgstr "Choisissez la langue du robot vers laquelle vous souhaitez basculer: 🌐"
+#: app/text.py:358
+msgid "🌐 <b>Choose your language:</b>"
+msgstr "🌐 <b>Choisis ta langue :</b>"
 
-#: app/text.py:198
-msgid "Язык бота изменён! ✅"
-msgstr "La langue bot a changé ! ✅"
+#: app/text.py:361
+msgid "✅ Language changed!"
+msgstr "✅ Langue modifiée !"
 
-#: app/text.py:203
+#: app/text.py:365
+msgid "Please select a valid option."
+msgstr "Veuillez sélectionner une option valide."
+
+#: app/text.py:369
+msgid "Please select a mode first: /fun, /dates, or /friends"
+msgstr "Choisis d'abord un mode : /fun, /dates ou /friends"
+
+#: app/text.py:373
+msgid "Error activating mode. Please try again."
+msgstr "Erreur lors de l'activation du mode. Réessaie."
+
+#: app/text.py:377
+msgid "Unsupported language"
+msgstr "Langue non supportée"
+
+#: app/text.py:381
+msgid "Create a profile before searching."
+msgstr "Crée un profil avant de rechercher."
+
+#: app/text.py:386
 msgid ""
 "\n"
-"Укажи причину жалобы:\n"
-"🔞 Неприличный контент\n"
-"💰 Реклама\n"
-"🔫 Другое\n"
+"⚠️ <b>Report this profile:</b>\n"
 "\n"
-"↩️ Назад\n"
+"Select a reason:\n"
+"🔞 Inappropriate content\n"
+"💰 Spam/Advertising\n"
+"🔫 Other violation\n"
+"\n"
+"↩️ Cancel\n"
 msgstr ""
 "\n"
-"Indiquez la raison de votre plainte :\n"
+"⚠️ <b>Signaler ce profil :</b>\n"
+"\n"
+"Sélectionne une raison :\n"
 "🔞 Contenu inapproprié\n"
-"💰 Publicité\n"
-"🔫 Autre\n"
+"💰 Spam / Publicité\n"
+"🔫 Autre infraction\n"
 "\n"
-"↩️ Retour\n"
+"↩️ Annuler\n"
 
-#: app/text.py:223
-msgid "✅ Жалоба успешно отправлена на рассмотрение!"
-msgstr "✅ La plainte a été envoyée avec succès pour examen !"
+#: app/text.py:410
+msgid ""
+"✅ <b>Report submitted!</b>\n"
+"\n"
+"Thanks for keeping CONQUEER safe. We'll review this."
+msgstr ""
+"✅ <b>Signalement envoyé !</b>\n"
+"\n"
+"Merci de contribuer à la sécurité de CONQUEER. Nous allons examiner ce "
+"profil."
 
-#: app/text.py:228
-msgid "Загрузи новые фото! Можно отправить до 3 фотографий 📸"
-msgstr "Téléchargez de nouvelles photos ! Vous pouvez envoyer jusqu'à 3 photos 📸"
+#: app/text.py:415
+msgid ""
+"📸 <b>Upload new photos!</b>\n"
+"\n"
+"Send up to 3 photos to update your profile."
+msgstr ""
+"📸 <b>Envoie de nouvelles photos !</b>\n"
+"\n"
+"Envoie jusqu'à 3 photos pour mettre à jour ton profil."
 
-#: app/text.py:232
-msgid "Фотографии остались без изменений"
-msgstr "Les photos restent inchangées"
+#: app/text.py:419
+msgid "📸 Photos unchanged"
+msgstr "📸 Photos inchangées"
 
-#: app/text.py:236
-msgid "Вы не загрузили ни одного фото. Попробуйте еще раз."
-msgstr "Vous n'avez pas téléchargé de photos. Réessayez."
+#: app/text.py:423
+msgid "⚠️ No photos uploaded. Try again!"
+msgstr "⚠️ Aucune photo envoyée. Réessaie !"
 
-#: app/text.py:240
-msgid "❌ Ошибка при сохранении фото. Попробуйте еще раз."
-msgstr "❌ Erreur lors de l'enregistrement d'une photo. Réessayez."
+#: app/text.py:427
+msgid "❌ Error saving photos. Please try again."
+msgstr "❌ Erreur lors de l'enregistrement des photos. Réessaie."
 
-#: app/keyboards/default/registration_form.py:56 app/text.py:244
-#: app/text.py:254
-msgid "Это все, сохранить фото"
-msgstr "C'est tout, gardez la photo"
+#: app/text.py:431 app/text.py:441
+msgid "✅ Done, save photos"
+msgstr "✅ Terminé, enregistrer les photos"
 
-#: app/text.py:249
+#: app/text.py:436
 #, python-brace-format
 msgid ""
-"📸 Фото {current}/{total} загружено!\n"
+"📸 Photo {current}/{total} uploaded!\n"
 "\n"
-"Можете загрузить еще {remaining} фото или нажать '{finish_button}'"
+"You can add {remaining} more or tap '{finish_button}'"
 msgstr ""
-"📸 Photo {current}/{total} téléchargée !\n"
+"📸 Photo {current}/{total} envoyée !\n"
 "\n"
-"Vous pouvez télécharger encore {remaining} photo(s) ou appuyer sur "
-"'{finish_button}'"
+"Tu peux en ajouter {remaining} de plus ou appuyer sur '{finish_button}'"
 
-#: app/text.py:260
+#: app/text.py:447
 #, python-brace-format
-msgid "Сохранено {} фото!"
-msgstr "{} photo(s) enregistrée(s) !"
+msgid "✅ {} photos saved!"
+msgstr "✅ {} photos enregistrées !"
 
-#: app/text.py:263
+#: app/text.py:450
 #, python-brace-format
-msgid "Все {} фото загружены!"
-msgstr "Toutes les {} photos ont été téléchargées !"
+msgid "✅ All {} photos uploaded!"
+msgstr "✅ Les {} photos ont été envoyées !"
 
-#: app/text.py:268
-msgid "❌ Максимум 3 фото! Нажмите 'Это все, сохранить фото' для сохранения."
+#: app/text.py:454
+msgid "⚠️ Maximum 3 photos! Tap 'Done, save photos' to finish."
 msgstr ""
-"❌ Maximum 3 photos ! Appuyez sur 'C'est tout, enregistrer la photo' pour "
-"sauvegarder."
+"⚠️ 3 photos maximum ! Appuie sur 'Terminé, enregistrer les photos' pour "
+"finir."
 
-#: app/text.py:272
-msgid "📸 Отправьте фотографию или выберите действие из меню"
-msgstr "📸 Envoyez une photo ou choisissez une action dans le menu"
+#: app/text.py:458
+msgid "📸 Send a photo or choose from the menu"
+msgstr "📸 Envoie une photo ou choisis dans le menu"
 
-#: app/text.py:276
-msgid "❌ Для создания профиля необходимо загрузить хотя бы одно фото!"
-msgstr "❌ Pour créer un profil, vous devez télécharger au moins une photo !"
+#: app/text.py:462
+msgid "❌ You need at least 1 photo to create your profile!"
+msgstr "❌ Il te faut au moins 1 photo pour créer ton profil !"
 
+#: app/text.py:466
+#, python-brace-format
+msgid ""
+"\n"
+"🎂 <b>Set Your Age Range</b>\n"
+"\n"
+"Current range: <b>{min_age} - {max_age} years old</b>\n"
+"\n"
+"Enter the <b>minimum age</b> you want to see (18-99):\n"
+"\n"
+"Type a number or press ↩️ to cancel.\n"
+msgstr ""
+"\n"
+"🎂 <b>Définis ta tranche d'âge</b>\n"
+"\n"
+"Tranche actuelle : <b>{min_age} - {max_age} ans</b>\n"
+"\n"
+"Entre l'<b>âge minimum</b> souhaité (18-99) :\n"
+"\n"
+"Tape un nombre ou appuie sur ↩️ pour annuler.\n"
+
+#: app/text.py:477
+#, python-brace-format
+msgid ""
+"\n"
+"🎂 <b>Set Your Age Range</b>\n"
+"\n"
+"Minimum age: <b>{min_age}</b> ✅\n"
+"\n"
+"Now enter the <b>maximum age</b> (18-99):\n"
+"\n"
+"Type a number or press ↩️ to cancel.\n"
+msgstr ""
+"\n"
+"🎂 <b>Définis ta tranche d'âge</b>\n"
+"\n"
+"Âge minimum : <b>{min_age}</b> ✅\n"
+"\n"
+"Entre maintenant l'<b>âge maximum</b> (18-99) :\n"
+"\n"
+"Tape un nombre ou appuie sur ↩️ pour annuler.\n"
+
+#: app/text.py:488
+#, python-brace-format
+msgid ""
+"\n"
+"✅ <b>Age filter set!</b>\n"
+"\n"
+"You'll now see profiles from <b>{min_age} to {max_age} years old</b>.\n"
+"\n"
+"Hit 🔍 to start browsing with your new filter!\n"
+msgstr ""
+"\n"
+"✅ <b>Filtre d'âge configuré !</b>\n"
+"\n"
+"Tu verras désormais les profils de <b>{min_age} à {max_age} ans</b>.\n"
+"\n"
+"Appuie sur 🔍 pour explorer avec ce nouveau filtre !\n"
+
+#: app/text.py:498
+msgid ""
+"\n"
+"🔄 <b>Age filter reset!</b>\n"
+"\n"
+"Back to automatic age matching based on your age and compatibility.\n"
+"\n"
+"Hit 🔍 to start browsing!\n"
+msgstr ""
+"\n"
+"🔄 <b>Filtre d'âge réinitialisé !</b>\n"
+"\n"
+"Retour au matching automatique basé sur ton âge et tes préférences.\n"
+"\n"
+"Appuie sur 🔍 pour explorer !\n"
+
+#: app/text.py:508
+msgid "❌ Age filter setup cancelled."
+msgstr "❌ Configuration du filtre d'âge annulée."
+
+#: app/text.py:512
+msgid "⚠️ Age must be at least 18. Try again!"
+msgstr "⚠️ L'âge doit être d'au moins 18 ans ! Réessaie."
+
+#: app/text.py:516
+msgid "⚠️ Age must be between 18 and 99. Try again!"
+msgstr "⚠️ L'âge doit être compris entre 18 et 99 ans ! Réessaie."
+
+#: app/text.py:519
+#, python-brace-format
+msgid ""
+"\n"
+"⚠️ Max age must be ≥ min age (<b>{min_age}</b>).\n"
+"\n"
+"Enter a valid maximum age:\n"
+msgstr ""
+"\n"
+"⚠️ L'âge maximum doit être ≥ âge minimum (<b>{min_age}</b>).\n"
+"\n"
+"Entre un âge maximum valide :\n"
+
+#: app/text.py:527
+msgid "⚠️ Numbers only! Enter an age between 18-99."
+msgstr "⚠️ Chiffres uniquement ! Entre un âge entre 18 et 99."
+
+#: app/filters/create_profile_filtres.py:47
 #: app/keyboards/default/registration_form.py:17
-msgid "Создать анкету"
+msgid "Create a profile"
 msgstr "Créer un profil"
 
-#: app/keyboards/default/registration_form.py:30
-msgid "Парень"
-msgstr "Garçon"
+#: app/handlers/dating/create_profile.py:188
+#: app/keyboards/default/registration_form.py:102
+msgid "✅ Yes"
+msgstr "✅ Oui"
 
-#: app/keyboards/default/registration_form.py:30
-msgid "Девушка"
-msgstr "Fille"
+#: app/handlers/dating/create_profile.py:189
+#: app/keyboards/default/registration_form.py:103
+msgid "❌ No"
+msgstr "❌ Non"
 
-#: app/keyboards/default/registration_form.py:41
-msgid "Парней"
-msgstr "Garçons"
+#: app/handlers/dating/create_profile.py:190
+#: app/handlers/dating/mode_switch.py:189
+#: app/keyboards/default/registration_form.py:106
+#: app/keyboards/default/registration_form.py:123
+msgid "🏨 Airbnb"
+msgstr "🏨 Airbnb"
 
-#: app/keyboards/default/registration_form.py:42
-msgid "Девушек"
-msgstr "Filles"
+#: app/handlers/dating/mode_selection.py:17 app/keyboards/default/base.py:17
+msgid "Fun Mode"
+msgstr "Mode Fun"
 
-#: app/keyboards/default/registration_form.py:43
-msgid "Всех"
+#: app/handlers/dating/mode_selection.py:18 app/keyboards/default/base.py:18
+msgid "Dating Mode"
+msgstr "Mode Dating"
+
+#: app/handlers/dating/mode_selection.py:19 app/keyboards/default/base.py:19
+msgid "Friends Mode"
+msgstr "Mode Friends"
+
+#: app/handlers/dating/mode_switch.py:22 app/keyboards/default/base.py:32
+msgid "Yes, Switch"
+msgstr "Oui, changer"
+
+#: app/handlers/dating/mode_switch.py:24 app/keyboards/default/base.py:32
+msgid "No, Stay"
+msgstr "Non, rester"
+
+#: app/handlers/dating/mode_switch.py:187
+#: app/keyboards/default/registration_form.py:119
+msgid "🏠 Host"
+msgstr "🏠 Reçoit"
+
+#: app/handlers/dating/mode_switch.py:188
+#: app/keyboards/default/registration_form.py:120
+msgid "🚫 Can't Host"
+msgstr "🚫 Ne reçoit pas"
+
+#: app/handlers/dating/mode_switch.py:190
+#: app/keyboards/default/registration_form.py:124
+msgid "👁️ See All"
+msgstr "👁️ Voir tous"
+
+#: app/handlers/dating/mode_switch.py:218
+#: app/keyboards/default/registration_form.py:137
+msgid "🔝 Tops"
+msgstr "🔝 Tops"
+
+#: app/handlers/dating/mode_switch.py:219
+#: app/keyboards/default/registration_form.py:138
+msgid "🔽 Bottoms"
+msgstr "🔽 Bottoms"
+
+#: app/handlers/dating/mode_switch.py:220
+#: app/keyboards/default/registration_form.py:141
+msgid "🔄 Verse"
+msgstr "🔄 Versatiles"
+
+#: app/handlers/dating/mode_switch.py:221
+#: app/keyboards/default/registration_form.py:142
+msgid "👁️ Everyone"
+msgstr "👁️ Tous"
+
+#: app/keyboards/default/registration_form.py:32
+msgid "Top"
+msgstr "Top"
+
+#: app/keyboards/default/registration_form.py:33
+msgid "Bottom"
+msgstr "Bottom"
+
+#: app/keyboards/default/registration_form.py:34
+#: app/keyboards/default/registration_form.py:51
+msgid "Verse"
+msgstr "Versatile"
+
+#: app/keyboards/default/registration_form.py:47
+msgid "Tops"
+msgstr "Tops"
+
+#: app/keyboards/default/registration_form.py:48
+msgid "Bottoms"
+msgstr "Bottoms"
+
+#: app/keyboards/default/registration_form.py:52
+msgid "Everyone"
 msgstr "Tous"
 
-#: app/keyboards/default/registration_form.py:80
-#: app/keyboards/default/registration_form.py:90
-#: app/keyboards/default/registration_form.py:105
-msgid "Оставить предыдущее"
-msgstr "Laisser le précédent"
+#: app/keyboards/default/registration_form.py:65
+msgid "That's all, save photos"
+msgstr "C'est tout, enregistrer les photos"
 
-#: app/keyboards/default/registration_form.py:81
-msgid "Пропустить"
+#: app/keyboards/default/registration_form.py:89
+#: app/keyboards/default/registration_form.py:152
+#: app/keyboards/default/registration_form.py:167
+msgid "Keep previous"
+msgstr "Garder le précédent"
+
+#: app/keyboards/default/registration_form.py:90
+msgid "Skip"
 msgstr "Passer"
 
-#: app/keyboards/default/registration_form.py:92
-msgid "📍 Отправить местоположение"
-msgstr "📍 Envoyer le lieu"
+#: app/keyboards/default/registration_form.py:154
+msgid "📍 Send location"
+msgstr "📍 Envoyer la localisation"
 
-#: app/keyboards/inline/archive.py:10
-msgid "Посмотреть"
+#: app/keyboards/inline/archive.py:11
+msgid "View"
 msgstr "Voir"
-
-#~ msgid "Кому-то понравилась тваоя анкета! Хочешь посмотреть? 👀"
-#~ msgstr "Quelqu'un a aimé votre profil ! Voulez-vous le voir? 👀"
-
-#~ msgid ""
-#~ "Пользователь <code>{}</code> (@{}) отправил "
-#~ "жалобу на анкету пользователя: <code>{}</code>"
-#~ " (@{})"
-#~ msgstr ""
-#~ "L'utilisateur <code>{}</code> (@{}) a envoyé"
-#~ " une plainte concernant le profil de"
-#~ " l'utilisateur: <code>{}</code> (@{})"
-
-#~ msgid "Отменить жалобу"
-#~ msgstr "Annulation de la plainte"
-
-#~ msgid "Пришли своё фото! 📸"
-#~ msgstr "Envoyez votre photo ! 📸"
 

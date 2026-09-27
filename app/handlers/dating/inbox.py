@@ -84,7 +84,7 @@ async def match_archive(
     current_mode = await User.get_mode(session, user.id)
     
     if not current_mode:
-        await message.answer("Please select a mode first: /fun, /dates, or /friends")
+        await message.answer(mt.NO_MODE_SELECTED)
         return
 
     # Проверяем и отправляем уведомления о взаимных лайках
@@ -124,7 +124,7 @@ async def _match_atchive_callback(
     current_mode = await User.get_mode(session, user.id)
     
     if not current_mode:
-        await callback.message.answer("Please select a mode first: /fun, /dates, or /friends")
+        await callback.message.answer(mt.NO_MODE_SELECTED)
         return
 
     # Проверяем и отправляем уведомления о взаимных лайках

@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.filters.create_profile_filtres as filters
+from loader import _
 from app.business.menu_service import menu
 from app.keyboards.default.registration_form import RegistrationFormKb
 from app.routers import dating_router
@@ -100,7 +101,7 @@ async def _photo(message: types.Message, state: FSMContext, user: UserModel, ses
     data = await state.get_data()
     photos = data.get("photos", [])
 
-    if message.text in filters.LEAVE_PREVIOUS_OPTIONS:
+    if message.text in filters.localized_options(filters.LEAVE_PREVIOUS_OPTIONS):
         # Get existing photos from user profile
         existing_photos = await ProfileMedia.get_profile_photos(session, user.id)
         if existing_photos:
@@ -113,7 +114,7 @@ async def _photo(message: types.Message, state: FSMContext, user: UserModel, ses
         await state.set_state(ProfileCreate.description)
         return
 
-    elif message.text in filters.SAVE_PHOTO_OPTIONS:
+    elif message.text in filters.localized_options(filters.SAVE_PHOTO_OPTIONS):
         if not photos:
             await message.answer(mt.PHOTO_NO_UPLOADED)
             return
@@ -162,9 +163,9 @@ async def _description(
 ):
     data = await state.get_data()
     
-    if message.text in filters.SKIP_OPTIONS:
+    if message.text in filters.localized_options(filters.SKIP_OPTIONS):
         description = ""
-    elif message.text in filters.LEAVE_PREVIOUS_OPTIONS and user.profile:
+    elif message.text in filters.localized_options(filters.LEAVE_PREVIOUS_OPTIONS) and user.profile:
         description = user.profile.description
     else:
         description = message.text
@@ -184,14 +185,14 @@ async def _hosting(
 ):
     # Map button text to hosting values
     hosting_map = {
-        "✅ Yes": "yes",
-        "❌ No": "no",
-        "🏨 Airbnb": "airbnb"
+        _("✅ Yes"): "yes",
+        _("❌ No"): "no",
+        _("🏨 Airbnb"): "airbnb"
     }
     
     hosting = hosting_map.get(message.text)
     if not hosting:
-        await message.answer("Please select a valid option.")
+        await message.answer(mt.INVALID_OPTION)
         return
     
     data = await state.get_data()

@@ -4,6 +4,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message
 
 from app.business.alert_service import new_user_alert_to_group
+from app.locales import normalize_locale
 from app.constans import REFERAL_SOURCES
 from database.models.user import UserStatus
 from database.services import User
@@ -23,7 +24,7 @@ class CommonMiddleware(BaseMiddleware):
             session=session,
             id=message.from_user.id,
             username=message.from_user.username,
-            language=message.from_user.language_code,
+            language=normalize_locale(message.from_user.language_code),
         )
 
         if user.status == UserStatus.Banned:

@@ -6,75 +6,31 @@ from .kb_generator import simple_kb_generator as kb_gen
 
 del_kb = ReplyKeyboardRemove()
 
+cancel_kb = kb_gen(["/cancel"])
+start_kb = kb_gen(["/start"])
+profile_kb = kb_gen(["🔄", "🖼", "✍️", "❌"], ["↩️"])
+menu_kb = kb_gen(["👤", "✉️"], ["🎭"])
 
-cancel_kb: ReplyKeyboardMarkup = kb_gen(
-    ["/cancel"],
-)
 
-start_kb: ReplyKeyboardMarkup = kb_gen(
-    ["/start"],
-)
+def mode_selection_kb() -> ReplyKeyboardMarkup:
+    return kb_gen(
+        [f"🍆👅🍑💦 {_('Fun Mode') }"],
+        [f"❤️🥂 {_('Dating Mode') }"],
+        [f"🤝 {_('Friends Mode') }"],
+        ["↩️"],
+    )
 
-profile_kb: ReplyKeyboardMarkup = kb_gen(
-    ["🔄", "🖼", "✍️", "❌"],
-    ["↩️"],
-)
 
-# UPDATED: Main menu with Enter Mode button
-menu_kb: ReplyKeyboardMarkup = kb_gen(
-    ["👤", "✉️"],
-    ["🎭"],
-)
+mode_menu_kb = kb_gen(["🔍", "📭"], ["🎂", "🏠"], ["💤"])
+search_kb = kb_gen(["❤️", "📩", "👎"], ["💢"], ["💤"])
+admin_kb = kb_gen(["📊 Statistics", "📨 Mailing"], ["📝 Logs"], ["↩️"])
+match_kb = kb_gen(["❤️", "👎"], ["💢"], ["💤"])
+return_to_menu_kb = kb_gen(["↩️"])
 
-# NEW: Mode selection keyboard
-mode_selection_kb: ReplyKeyboardMarkup = kb_gen(
-    ["🍆👅🍑💦 Fun Mode"],
-    ["❤️🥂 Dating Mode"],
-    ["🤝 Friends Mode"],
-    ["↩️"],
-)
 
-# UPDATED: Mode-specific menus - Added Age Filter and Hosting buttons
-mode_menu_kb: ReplyKeyboardMarkup = kb_gen(
-    ["🔍", "📭"],
-    ["🎂", "🏠"],  # NEW: Age filter and Hosting filter
-    ["💤"],
-)
+def mode_confirm_kb() -> ReplyKeyboardMarkup:
+    return kb_gen([f"✅ {_('Yes, Switch')}", f"❌ {_('No, Stay')}"])
 
-search_kb: ReplyKeyboardMarkup = kb_gen(
-    ["❤️", "📩", "👎"],
-    ["💢"],
-    ["💤"],
-)
 
-admin_kb: ReplyKeyboardMarkup = kb_gen(
-    ["📊 Statistics", "📨 Mailing"],
-    ["📝 Logs"],
-    ["↩️"],
-)
-
-match_kb: ReplyKeyboardMarkup = kb_gen(
-    ["❤️", "👎"],
-    ["💢"],
-    ["💤"],
-)
-
-return_to_menu_kb: ReplyKeyboardMarkup = kb_gen(
-    ["↩️"],
-)
-
-mode_confirm_kb: ReplyKeyboardMarkup = lambda: kb_gen(
-    ["✅ Yes, Switch", "❌ No, Stay"],
-)
-
-# NEW: Age filter keyboard (simple with just back button)
-age_filter_kb: ReplyKeyboardMarkup = kb_gen(
-    ["↩️"],
-)
-
-# NEW: Hosting filter keyboard
-hosting_kb: ReplyKeyboardMarkup = lambda: kb_gen(
-    ["Yes ✅", "No ❌"],
-    ["Airbnb 🏨", "All 🌍"],
-    ["↩️"],
-)
+age_filter_kb = kb_gen(["↩️"])
+hosting_kb = lambda: kb_gen(["Yes ✅", "No ❌"], ["Airbnb 🏨", "All 🌍"], ["↩️"])

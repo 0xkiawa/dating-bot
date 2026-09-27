@@ -1,4 +1,5 @@
 from aiogram import F, types
+from aiogram.filters import Filter
 from aiogram.filters import Command
 from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -8,11 +9,21 @@ from app.keyboards.default.base import mode_confirm_kb, mode_menu_kb
 from app.routers import dating_router
 from app.states.default import Search
 from app.text import message_text as mt
+from loader import _
 from database.models import UserModel
 from database.services import User
 from database.services.search import search_profiles
 from app.business.profile_service import send_profile_with_dist
 from database.services import Profile
+
+
+class ModeConfirmationFilter(Filter):
+    async def __call__(self, message: types.Message) -> dict | bool:
+        if message.text == f"✅ {_('Yes, Switch')}":
+            return {"switch": True}
+        if message.text == f"❌ {_('No, Stay')}":
+            return {"switch": False}
+        return False
 
 
 # Command handlers for direct mode access
@@ -80,12 +91,13 @@ async def handle_mode_switch(
     await message.answer(confirm_text, reply_markup=mode_confirm_kb())
 
 
-@dating_router.message(F.text.in_(["✅ Yes, Switch", "❌ No, Stay"]))
+@dating_router.message(ModeConfirmationFilter())
 async def mode_switch_confirmation(
     message: types.Message,
     state: FSMContext,
     user: UserModel,
     session: AsyncSession,
+    switch: bool,
 ) -> None:
     """Handle mode switch confirmation"""
     data = await state.get_data()
@@ -94,7 +106,7 @@ async def mode_switch_confirmation(
     if not pending_mode:
         return
     
-    if message.text == "✅ Yes, Switch":
+    if switch:
         await activate_mode(message, state, user, session, pending_mode)
     else:
         await message.answer(mt.MODE_SWITCH_CANCELLED, reply_markup=mode_menu_kb)
@@ -113,7 +125,7 @@ async def activate_mode(
     success = await User.set_mode(session, user.id, mode)
     
     if not success:
-        await message.answer("Error activating mode. Please try again.")
+        await message.answer(mt.MODE_ACTIVATION_ERROR)
         return
     
     # Send mode activation message with mode menu
@@ -151,7 +163,7 @@ async def browse_profiles_handler(
     current_mode = await User.get_mode(session, user.id)
     
     if not current_mode:
-        await message.answer("Please select a mode first: /fun, /dates, or /friends")
+        await message.answer(mt.NO_MODE_SELECTED)
         return
     
     # Show hosting filter prompt
@@ -172,15 +184,15 @@ async def hosting_filter_handler(
     """Handle hosting filter selection - then ask for role filter"""
     # Map button text to filter values
     hosting_map = {
-        "🏠 Host": "yes",
-        "🚫 Can't Host": "no",
-        "🏨 Airbnb": "airbnb",
-        "👁️ See All": "all"
+        _("🏠 Host"): "yes",
+        _("🚫 Can't Host"): "no",
+        _("🏨 Airbnb"): "airbnb",
+        _("👁️ See All"): "all"
     }
     
     hosting_filter = hosting_map.get(message.text)
     if not hosting_filter:
-        await message.answer("Please select a valid option.")
+        await message.answer(mt.INVALID_OPTION)
         return
     
     # Save hosting filter and move to role filter
@@ -203,15 +215,15 @@ async def role_filter_handler(
     """Handle role filter selection - REQUIRED to start search"""
     # Map button text to filter values
     role_map = {
-        "🔝 Tops": "top",
-        "🔽 Bottoms": "bottom",
-        "🔄 Verse": "verse",
-        "👁️ Everyone": "all"
+        _("🔝 Tops"): "top",
+        _("🔽 Bottoms"): "bottom",
+        _("🔄 Verse"): "verse",
+        _("👁️ Everyone"): "all"
     }
     
     role_filter = role_map.get(message.text)
     if not role_filter:
-        await message.answer("Please select a valid option.")
+        await message.answer(mt.INVALID_OPTION)
         return
     
     data = await state.get_data()

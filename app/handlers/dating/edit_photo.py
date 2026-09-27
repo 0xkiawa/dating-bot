@@ -39,7 +39,7 @@ async def _update_photo(
     data = await state.get_data()
     photos = data.get("photos", [])
 
-    if message.text in filters.LEAVE_PREVIOUS_OPTIONS:
+    if message.text in filters.localized_options(filters.LEAVE_PREVIOUS_OPTIONS):
         # Пользователь хочет оставить текущие фото - завершаем без изменений
         await state.clear()
         await message.answer(mt.PHOTO_UNCHANGED)
@@ -77,7 +77,7 @@ async def _update_photo(
     elif message.photo:
         # Проверяем лимит фотографий
         if len(photos) >= 3:
-            await message.answer("❌ Максимум 3 фото! Ваши фото уже сохранены.")
+            await message.answer(mt.PHOTO_LIMIT_REACHED)
             return
 
         # Добавляем новое фото в список

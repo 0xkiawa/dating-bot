@@ -1,3 +1,4 @@
+from app.locales import normalize_locale
 from loader import _
 
 """
@@ -41,11 +42,6 @@ Your platform to conquer the dating scene — built by queer men, for queer men.
 - Filter by age range and hosting
 - Location-based matching
 - Safe, private, and judgment-free
-
-<b>Open Source & Community-Driven</b>
-Built with love on <a href='https://github.com/0xkiawa/dating-bot'>GitHub</a>
-
-Questions or feedback? Hit up: @devvsima
 
 Now go forth and conquer! 👑
 """)
@@ -165,11 +161,11 @@ Let's expand your chosen family! 🌈
 
     def MODE_SWITCH_CONFIRM(self, current_mode: str, new_mode: str):
         mode_icons = {'fun': '🍆👅🍑💦', 'dates': '❤️🥂', 'friends': '🤝'}
-        mode_names = {'fun': 'Fun', 'dates': 'Dating', 'friends': 'Friends'}
+        mode_names = {'fun': _('Fun'), 'dates': _('Dating'), 'friends': _('Friends')}
         mode_desc = {
-            'fun': 'casual hookups and fun',
-            'dates': 'romantic connections',
-            'friends': 'platonic friendships'
+            'fun': _('casual hookups and fun'),
+            'dates': _('romantic connections'),
+            'friends': _('platonic friendships')
         }
         
         return _("""
@@ -284,7 +280,7 @@ Want to come back? Just send /start to reactivate!
     def LIKE_PROFILE(self, language: str):
         return _(
             "🔥 <b>You got {} likes!</b>\n\n📭 Tap to see who's interested",
-            locale=language,
+            locale=normalize_locale(language),
         )
 
     # UPDATED: Mode-specific empty inbox messages
@@ -300,7 +296,7 @@ Want to come back? Just send /start to reactivate!
     def LIKE_ACCEPT(self, language: str):
         return _(
             "🎉 <b>It's a match!</b>\n\nGo conquer together: <a href='{}'>{}</a>",
-            locale=language,
+            locale=normalize_locale(language),
         )
 
     @property
@@ -363,6 +359,26 @@ Want to come back? Just send /start to reactivate!
 
     def DONE_CHANGE_LANG(self, language: str):
         return _("✅ Language changed!", locale=language)
+
+    @property
+    def INVALID_OPTION(self):
+        return _("Please select a valid option.")
+
+    @property
+    def NO_MODE_SELECTED(self):
+        return _("Please select a mode first: /fun, /dates, or /friends")
+
+    @property
+    def MODE_ACTIVATION_ERROR(self):
+        return _("Error activating mode. Please try again.")
+
+    @property
+    def UNSUPPORTED_LANGUAGE(self):
+        return _("Unsupported language")
+
+    @property
+    def NO_PROFILE_FOR_SEARCH(self):
+        return _("Create a profile before searching.")
 
     # Complaints and moderation
     @property
