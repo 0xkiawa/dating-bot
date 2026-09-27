@@ -21,7 +21,14 @@ def mode_selection_kb() -> ReplyKeyboardMarkup:
     )
 
 
-mode_menu_kb = kb_gen(["🔍", "📭"], ["🎂", "🏠"], ["💤"])
+def mode_menu_kb() -> ReplyKeyboardMarkup:
+    return kb_gen(
+        [f"🔍 {_('Browse')}", f"📭 {_('Likes')}"],
+        [f"🎂 {_('Age Filter')}", f"🏠 {_('Hosting')}"],
+        [f"💤 {_('Menu')}"],
+    )
+
+
 search_kb = kb_gen(["❤️", "📩", "👎"], ["💢"], ["💤"])
 admin_kb = kb_gen(["📊 Statistics", "📨 Mailing"], ["📝 Logs"], ["↩️"])
 match_kb = kb_gen(["❤️", "👎"], ["💢"], ["💤"])

@@ -109,7 +109,7 @@ async def mode_switch_confirmation(
     if switch:
         await activate_mode(message, state, user, session, pending_mode)
     else:
-        await message.answer(mt.MODE_SWITCH_CANCELLED, reply_markup=mode_menu_kb)
+        await message.answer(mt.MODE_SWITCH_CANCELLED, reply_markup=mode_menu_kb())
     
     await state.update_data(pending_mode=None)
 
@@ -148,7 +148,7 @@ async def show_mode_menu(message: types.Message, mode: str) -> None:
     }
     
     menu_text = mode_menus.get(mode, "Select an option:")
-    await message.answer(menu_text, reply_markup=mode_menu_kb)
+    await message.answer(menu_text, reply_markup=mode_menu_kb())
 
 
 # Handle Browse Profiles button from mode menu
@@ -281,7 +281,7 @@ async def start_mode_search(
         first_profile = await Profile.get(session, profile_list[0])
         await send_profile_with_dist(user=user, profile=first_profile, session=session)
     else:
-        await message.answer(mt.EMPTY_PROFILE_SEARCH(mode), reply_markup=mode_menu_kb)
+        await message.answer(mt.EMPTY_PROFILE_SEARCH(mode), reply_markup=mode_menu_kb())
     
     # Restore original find_role
     user.profile.find_role = original_find_role

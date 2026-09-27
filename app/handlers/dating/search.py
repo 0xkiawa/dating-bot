@@ -134,7 +134,7 @@ async def next_profile(
         
         # Clear state and show mode-specific empty message
         await state.clear()
-        await message.answer(mt.EMPTY_PROFILE_SEARCH(current_mode), reply_markup=mode_menu_kb)
+        await message.answer(mt.EMPTY_PROFILE_SEARCH(current_mode), reply_markup=mode_menu_kb())
 
 
 async def like_profile(

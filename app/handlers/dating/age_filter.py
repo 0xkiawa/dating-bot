@@ -106,7 +106,7 @@ async def age_filter_max_set(
     
     await message.answer(
         mt.AGE_FILTER_SET(min_age=min_age, max_age=max_age),
-        reply_markup=mode_menu_kb
+        reply_markup=mode_menu_kb()
     )
 
 
@@ -136,7 +136,7 @@ async def age_filter_cancel(
     
     await message.answer(
         mt.AGE_FILTER_CANCELLED,
-        reply_markup=mode_menu_kb
+        reply_markup=mode_menu_kb()
     )
 
 

@@ -77,4 +77,4 @@ async def show_mode_menu(message: types.Message, mode: str) -> None:
         "dates": mt.MODE_DATES_MENU,
         "friends": mt.MODE_FRIENDS_MENU,
     }
-    await message.answer(mode_menus.get(mode, mt.INVALID_OPTION), reply_markup=mode_menu_kb)
+    await message.answer(mode_menus.get(mode, mt.INVALID_OPTION), reply_markup=mode_menu_kb())
