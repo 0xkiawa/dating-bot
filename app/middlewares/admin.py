@@ -11,7 +11,7 @@ class AdminMiddleware(BaseMiddleware):
     async def __call__(self, handler: Callable, message: Message, data: dict) -> Any:
         session = data["session"]
         if user := await User.get_with_profile(session, message.from_user.id):
-            if user.id in tgbot.ADMINS:
+            if user.id in tgbot.ADMINS_IDS:
                 data["user"] = user
                 return await handler(message, data)
         return
