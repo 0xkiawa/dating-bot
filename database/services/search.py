@@ -1,11 +1,13 @@
 import math
 import random
 import time
+from datetime import datetime, timedelta
 
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data.config import search
+from database.models.match import MatchModel, MatchStatus
 from database.models.profile import ProfileModel
 from database.models.user import UserModel
 from utils.logging import logger
@@ -131,14 +133,15 @@ async def search_profiles(
     Dynamic profile search: starts with small radius and increases until enough profiles found.
     Uses smart age range calculation and block-based shuffling.
     Filters by matching mode (fun/dates/friends), role compatibility, hosting preference, and age range.
+    Excludes profiles already swiped on (liked permanently, disliked for 30 days).
 
     Args:
         session: Database session
         profile: User profile for search
         user_mode: Current user mode (fun/dates/friends)
         hosting_filter: Hosting filter (yes/no/airbnb/all)
-        min_age: Minimum age filter (user preference) - NEW
-        max_age: Maximum age filter (user preference) - NEW
+        min_age: Minimum age filter (user preference)
+        max_age: Maximum age filter (user preference)
         initial_distance: Initial search distance (km)
         max_distance: Maximum search distance (km)
         radius_step: Radius increase step (km)
@@ -163,7 +166,7 @@ async def search_profiles(
     block_size = block_size or search.BLOCK_SIZE
     earth_radius = earth_radius or search.EARTH_RADIUS
 
-    # NEW: Calculate age range - use custom if provided, otherwise use dynamic calculation
+    # Calculate age range - use custom if provided, otherwise use dynamic calculation
     if min_age is not None and max_age is not None:
         # User has set custom age range
         age_min = min_age
@@ -208,7 +211,7 @@ async def search_profiles(
             ProfileModel.is_active == True,
             distance_expr < current_distance,
             role_matching,  # Role-based matching
-            ProfileModel.age.between(age_min, age_max),  # UPDATED: Use calculated age range
+            ProfileModel.age.between(age_min, age_max),  # Use calculated age range
             ProfileModel.id != profile.id,
         ]
 
@@ -219,6 +222,27 @@ async def search_profiles(
         # Add hosting filter
         if hosting_filter and hosting_filter != 'all':
             conditions.append(ProfileModel.hosting == hosting_filter)
+
+        # NEW: Exclude profiles already swiped on.
+        # Likes/pending matches stay excluded permanently.
+        # Dislikes (Rejected) get recycled back into search after 30 days,
+        # so the pool doesn't run dry while the user base is still small.
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        excluded_subquery = (
+            select(MatchModel.receiver_id)
+            .where(MatchModel.sender_id == profile.id)
+            .where(MatchModel.is_active == True)
+            .where(
+                or_(
+                    MatchModel.status != MatchStatus.Rejected,
+                    and_(
+                        MatchModel.status == MatchStatus.Rejected,
+                        MatchModel.updated_at >= thirty_days_ago,
+                    ),
+                )
+            )
+        )
+        conditions.append(ProfileModel.id.notin_(excluded_subquery))
 
         stmt = (
             select(ProfileModel.id, distance_expr.label("distance"))
@@ -251,7 +275,7 @@ async def search_profiles(
 
     mode_info = f" in {user_mode} mode" if user_mode else ""
     hosting_info = f" (hosting: {hosting_filter})" if hosting_filter and hosting_filter != 'all' else ""
-    age_info = f" (age: {age_min}-{age_max} [{age_filter_type}])"  # NEW: Show age range and type
+    age_info = f" (age: {age_min}-{age_max} [{age_filter_type}])"
     
     logger.log(
         "DATABASE",

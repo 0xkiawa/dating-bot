@@ -14,11 +14,9 @@ from app.routers import dating_router
 from app.states.default import Search
 from app.text import message_text as mt
 from database.models import UserModel
+from database.models.match import MatchStatus
 from database.services import Match, Profile, User
 from database.services.search import search_profiles
-
-
-# REMOVED: Old "🔍" handler - now handled in mode_switch.py with hosting filter
 
 
 @dating_router.message(
@@ -45,7 +43,11 @@ async def _search_profile(
             another_user=another_user,
         )
     elif message.text == "👎":
-        pass
+        await dislike_profile(
+            session=session,
+            message=message,
+            another_user=another_user,
+        )
     elif message.text == "📩":
         await state.set_state(Search.message)
         await message.answer(mt.MAILING_TO_USER, reply_markup=return_to_menu_kb)
@@ -120,7 +122,7 @@ async def next_profile(
 ):
     """
     Move to next profile in search results.
-    UPDATED: Returns to mode menu when search ends, with mode-specific message.
+    Returns to mode menu when search ends, with mode-specific message.
     """
     profile_list.pop(0)
     if profile_list:
@@ -149,3 +151,21 @@ async def like_profile(
         matchs_count = len(await Match.get_user_matchs(session, another_user.id))
         if matchs_count == 1 or matchs_count == 2 or matchs_count % 3 == 0:
             await send_user_like_alert(session, another_user)
+
+
+async def dislike_profile(
+    session: AsyncSession,
+    message: types.Message,
+    another_user: UserModel,
+):
+    """
+    Records a dislike so this profile doesn't reappear in search immediately.
+    Gets recycled back into the search pool after 30 days (see database/services/search.py).
+    """
+    await Match.create(
+        session=session,
+        sender_id=message.from_user.id,
+        receiver_id=another_user.id,
+        mail_text=None,
+        status=MatchStatus.Rejected,
+    )

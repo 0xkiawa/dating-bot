@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from sqlalchemy import case, insert, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,8 +23,10 @@ class Match(BaseService):
         is_active: bool = True,
     ) -> bool:
         """
-        Добавляет лайк в БД, если он уже есть - ничего не делает.
-        Возвращает True, если запись была создана, иначе False.
+        Добавляет лайк/дизлайк в БД.
+        Если запись уже есть и это НЕ устаревший (30+ дней) дизлайк - ничего не делает.
+        Если это устаревший дизлайк от того же sender - перезаписывает его новым статусом.
+        Возвращает True, если запись была создана/обновлена, иначе False.
         """
         existing_match = await session.execute(
             select(MatchModel).where(
@@ -35,7 +39,29 @@ class Match(BaseService):
                 & (MatchModel.is_active == True)
             )
         )
-        if existing_match.scalar():  # Если запись уже существует
+        existing = existing_match.scalar_one_or_none()
+
+        if existing:
+            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+            is_stale_rejection = (
+                existing.sender_id == sender_id
+                and existing.receiver_id == receiver_id
+                and existing.status == MatchStatus.Rejected
+                and existing.updated_at is not None
+                and existing.updated_at < thirty_days_ago
+            )
+
+            if is_stale_rejection:
+                existing.status = status
+                existing.message = mail_text
+                await session.commit()
+                logger.log(
+                    "DATABASE",
+                    f"{sender_id} & {receiver_id}: stale rejection overwritten (status={status})",
+                )
+                return True
+
+            # Если запись уже существует и не истекла - ничего не делаем
             logger.log("DATABASE", f"{sender_id} & {receiver_id}: лайк повторился")
             return False
 
