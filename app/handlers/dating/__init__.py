@@ -9,6 +9,7 @@ from .form_errors import dating_router
 from .mode_switch import dating_router
 from .mode_selection import dating_router
 from .age_filter import dating_router  # NEW: Add age filter handler
-from .photo_reveal import dating_router
+from .photo_reveal import dating_router # NEW: Add photo reveal handler
+from .carousel_nav import dating_router  # NEW: Add carousel navigation handler
 
 __all__ = ["dating_router"]

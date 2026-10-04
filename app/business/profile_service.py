@@ -1,11 +1,11 @@
 from io import BytesIO
 
-from aiogram.types import BufferedInputFile, InputMediaPhoto
+from aiogram.types import BufferedInputFile, InlineKeyboardButton, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from PIL import Image, ImageFilter
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.filters.kb_filter import PhotoRevealCallback
+from app.filters.kb_filter import CarouselNavCallback, PhotoRevealCallback
 from app.keyboards.inline.admin import block_user_ikb
 from app.text import message_text as mt
 from data.config import tgbot
@@ -55,13 +55,11 @@ async def _get_or_create_blurred_file_id(
     if media_obj.blurred_file_id:
         return media_obj.blurred_file_id
 
-    # Download the original photo bytes from Telegram
     file = await bot.get_file(media_obj.media)
     file_bytes_io = BytesIO()
     await bot.download_file(file.file_path, destination=file_bytes_io)
     file_bytes_io.seek(0)
 
-    # Blur it
     img = Image.open(file_bytes_io).convert("RGB")
     blurred = img.filter(ImageFilter.GaussianBlur(radius=30))
 
@@ -71,15 +69,12 @@ async def _get_or_create_blurred_file_id(
 
     input_file = BufferedInputFile(buffer.read(), filename="blurred.jpg")
 
-    # Upload it by sending to this viewer (first time only) - capture the new file_id
     sent = await bot.send_photo(chat_id=viewer_chat_id, photo=input_file)
     new_file_id = sent.photo[-1].file_id
 
     media_obj.blurred_file_id = new_file_id
     await session.commit()
 
-    # Delete that upload message - it was only sent to mint a file_id, not for the viewer to see yet.
-    # The caller will send the "real" blurred message (with the reveal button) separately.
     try:
         await bot.delete_message(chat_id=viewer_chat_id, message_id=sent.message_id)
     except Exception:
@@ -88,7 +83,84 @@ async def _get_or_create_blurred_file_id(
     return new_file_id
 
 
-async def _schedule_reblur(chat_id: int, message_id: int, blurred_file_id: str, delay_seconds: int):
+def _build_dots(total: int, index: int) -> str:
+    if total <= 1:
+        return ""
+    return "\n" + "".join("●" if i == index else "○" for i in range(total))
+
+
+async def build_carousel_page(
+    session: AsyncSession,
+    profile_id: int,
+    media_items: list[ProfileMediaModel],
+    index: int,
+    viewer_id: int,
+    caption_text: str,
+):
+    """
+    Builds everything needed to show ONE page of a profile's photo carousel:
+    the photo to send, the full caption (with dots), and the nav/reveal keyboard.
+    Used both for the initial send and for every ◀️▶️ navigation tap.
+    """
+    total = len(media_items)
+    media_obj = media_items[index]
+    dots = _build_dots(total, index)
+
+    photo_id = media_obj.media
+    extra_caption = ""
+    show_reveal_button = False
+
+    if media_obj.reveal_duration is not None:
+        revealed = await PhotoReveal.has_revealed(session, media_obj.id, viewer_id)
+        photo_id = await _get_or_create_blurred_file_id(session, media_obj, viewer_id)
+        if revealed:
+            extra_caption = "\n🔒 Already revealed"
+        else:
+            show_reveal_button = True
+
+    buttons = []
+    if index > 0:
+        buttons.append(
+            InlineKeyboardButton(
+                text="◀️",
+                callback_data=CarouselNavCallback(profile_id=profile_id, index=index - 1).pack(),
+            )
+        )
+    if show_reveal_button:
+        buttons.append(
+            InlineKeyboardButton(
+                text="👁 Tap to reveal",
+                callback_data=PhotoRevealCallback(media_id=media_obj.id).pack(),
+            )
+        )
+    if index < total - 1:
+        buttons.append(
+            InlineKeyboardButton(
+                text="▶️",
+                callback_data=CarouselNavCallback(profile_id=profile_id, index=index + 1).pack(),
+            )
+        )
+
+    builder = InlineKeyboardBuilder()
+    for btn in buttons:
+        builder.add(btn)
+    if buttons:
+        builder.adjust(len(buttons))
+
+    full_caption = f"{caption_text}{dots}{extra_caption}"
+    markup = builder.as_markup() if buttons else None
+
+    return photo_id, full_caption, markup
+
+
+async def _schedule_reblur_carousel(
+    chat_id: int,
+    message_id: int,
+    blurred_file_id: str,
+    caption_with_dots: str,
+    nav_markup,
+    delay_seconds: int,
+):
     """After `delay_seconds`, swap the revealed photo back to blurred. One-time only - no further reveals."""
     import asyncio
 
@@ -98,7 +170,8 @@ async def _schedule_reblur(chat_id: int, message_id: int, blurred_file_id: str, 
             await bot.edit_message_media(
                 chat_id=chat_id,
                 message_id=message_id,
-                media=InputMediaPhoto(media=blurred_file_id, caption="🔒 Already revealed"),
+                media=InputMediaPhoto(media=blurred_file_id, caption=caption_with_dots + "\n🔒 Already revealed"),
+                reply_markup=nav_markup,
             )
         except Exception as e:
             logger.log("PHOTO_REVEAL", f"Re-blur failed (message likely deleted/changed): {e}")
@@ -108,76 +181,10 @@ async def _schedule_reblur(chat_id: int, message_id: int, blurred_file_id: str, 
     task.add_done_callback(_pending_reblur_tasks.discard)
 
 
-async def _send_profile_photos(
-    chat_id: int,
-    viewer_id: int,
-    profile: ProfileModel,
-    media_items: list[ProfileMediaModel],
-    caption_text: str,
-    session: AsyncSession,
-) -> None:
-    """
-    Sends a profile's photos to a viewer, handling per-photo blur/reveal independently.
-    Falls back to a fast single media-group album when NO photos have blur enabled
-    (preserves the original snappy UX for users who opt out of blur entirely).
-    """
-    any_blur_enabled = any(m.reveal_duration is not None for m in media_items)
-
-    if not media_items:
-        await bot.send_message(chat_id=chat_id, text=caption_text)
-        return
-
-    if not any_blur_enabled:
-        # Fast path: original album behavior, unchanged
-        media_list = []
-        for i, media_obj in enumerate(media_items):
-            if i == 0:
-                media_list.append(
-                    InputMediaPhoto(media=media_obj.media, caption=caption_text, parse_mode=None)
-                )
-            else:
-                media_list.append(InputMediaPhoto(media=media_obj.media))
-        await bot.send_media_group(chat_id=chat_id, media=media_list)
-        return
-
-    # Slow path: at least one photo needs individual handling for its reveal button
-    for i, media_obj in enumerate(media_items):
-        caption = caption_text if i == 0 else None
-
-        if media_obj.reveal_duration is None:
-            # This specific photo has blur disabled - show normally
-            await bot.send_photo(chat_id=chat_id, photo=media_obj.media, caption=caption)
-            continue
-
-        already_revealed = await PhotoReveal.has_revealed(session, media_obj.id, viewer_id)
-
-        if already_revealed:
-            # No second chances - always blurred, no button, from here on forever
-            blurred_id = await _get_or_create_blurred_file_id(session, media_obj, chat_id)
-            await bot.send_photo(
-                chat_id=chat_id,
-                photo=blurred_id,
-                caption=(caption + "\n🔒 Already revealed") if caption else "🔒 Already revealed",
-            )
-        else:
-            blurred_id = await _get_or_create_blurred_file_id(session, media_obj, chat_id)
-            builder = InlineKeyboardBuilder()
-            builder.button(
-                text="👁 Tap to reveal",
-                callback_data=PhotoRevealCallback(media_id=media_obj.id),
-            )
-            await bot.send_photo(
-                chat_id=chat_id,
-                photo=blurred_id,
-                caption=caption,
-                reply_markup=builder.as_markup(),
-            )
-
-
 async def send_profile_with_dist(
     user: UserModel, profile: ProfileModel, session: AsyncSession
 ) -> None:
-    """Отправляет профиль пользователя с расстоянием до него в киломтерах, с учётом blur/reveal"""
+    """Отправляет профиль пользователя с расстоянием, как карусель фото (◀️▶️ + точки + reveal)"""
     media_items = await ProfileMedia.get_profile_photos(session=session, profile_id=profile.id)
 
     if user.profile.is_shared_location and profile.is_shared_location:
@@ -189,14 +196,19 @@ async def send_profile_with_dist(
         city = profile.city
     text = f"{profile.name}, {profile.age}, {city}\n{profile.description}"
 
-    await _send_profile_photos(
-        chat_id=user.id,
-        viewer_id=user.id,
-        profile=profile,
-        media_items=media_items,
-        caption_text=text,
+    if not media_items:
+        await bot.send_message(chat_id=user.id, text=text)
+        return
+
+    photo_id, caption, markup = await build_carousel_page(
         session=session,
+        profile_id=profile.id,
+        media_items=media_items,
+        index=0,
+        viewer_id=user.id,
+        caption_text=text,
     )
+    await bot.send_photo(chat_id=user.id, photo=photo_id, caption=caption, reply_markup=markup)
 
 
 async def complaint_to_profile(

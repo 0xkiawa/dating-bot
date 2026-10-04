@@ -17,3 +17,7 @@ class StatsCallback(CallbackData, prefix="stats"):
 
 class PhotoRevealCallback(CallbackData, prefix="reveal"):
     media_id: int
+
+class CarouselNavCallback(CallbackData, prefix="carnav"):
+    profile_id: int
+    index: int
