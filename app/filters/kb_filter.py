@@ -14,3 +14,6 @@ class BlockUserCallback(CallbackData, prefix="ban"):
 
 class StatsCallback(CallbackData, prefix="stats"):
     type: str
+
+class PhotoRevealCallback(CallbackData, prefix="reveal"):
+    media_id: int

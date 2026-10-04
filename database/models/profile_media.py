@@ -9,7 +9,6 @@ class MediaTypes(StatusMixin):
 class ProfileMediaModel(BaseModel):
     __tablename__ = "profile_media"
     
-    # CHANGED: Use Integer instead of BigInteger for SQLite autoincrement
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     
     profile_id: Mapped[int] = mapped_column(
@@ -18,6 +17,14 @@ class ProfileMediaModel(BaseModel):
     media_type: Mapped[str] = mapped_column(String(20), nullable=False)
     order: Mapped[int] = mapped_column(Integer, server_default="1", nullable=False)
     media: Mapped[str] = mapped_column(String(300), nullable=False)
+
+    # NEW: Privacy/blur-reveal feature
+    # None = blur disabled for this photo (owner opted out, shows normally)
+    # 0/3/10/30 = seconds the clear photo stays visible after a viewer taps reveal
+    reveal_duration: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # NEW: Caches the blurred version's Telegram file_id after first generation,
+    # so we don't re-download/re-blur/re-upload for every new viewer
+    blurred_file_id: Mapped[str | None] = mapped_column(String(300), nullable=True)
 
     profile: Mapped["ProfileModel"] = relationship(  # type: ignore
         back_populates="profile_media"
