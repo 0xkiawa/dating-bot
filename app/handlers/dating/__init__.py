@@ -11,5 +11,6 @@ from .mode_selection import dating_router
 from .age_filter import dating_router  # NEW: Add age filter handler
 from .photo_reveal import dating_router # NEW: Add photo reveal handler
 from .carousel_nav import dating_router  # NEW: Add carousel navigation handler
+from .photo_privacy import dating_router  # NEW: Add photo privacy handler
 
 __all__ = ["dating_router"]

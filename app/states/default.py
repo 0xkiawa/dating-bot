@@ -35,3 +35,6 @@ class Search(StatesGroup):
 class AgeFilter(StatesGroup):
     min_age = State()
     max_age = State()
+
+class PhotoPrivacyEdit(StatesGroup):
+    selecting = State()
