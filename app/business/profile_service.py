@@ -86,7 +86,8 @@ async def _get_or_create_blurred_file_id(
 def _build_dots(total: int, index: int) -> str:
     if total <= 1:
         return ""
-    return "\n" + "".join("●" if i == index else "○" for i in range(total))
+    # Bigger circle glyphs for a more prominent indicator
+    return "\n" + "   ".join("⬤" if i == index else "◯" for i in range(total))
 
 
 async def build_carousel_page(
@@ -122,21 +123,31 @@ async def build_carousel_page(
     if index > 0:
         buttons.append(
             InlineKeyboardButton(
-                text="◀️",
+                text="←",
                 callback_data=CarouselNavCallback(profile_id=profile_id, index=index - 1).pack(),
             )
         )
+
+    # Always-visible counter, centered between the arrows (even on the last page)
+    if total > 1:
+        buttons.append(
+            InlineKeyboardButton(
+                text=f"{index + 1}/{total}",
+                callback_data=CarouselNavCallback(profile_id=profile_id, index=index).pack(),
+            )
+        )
+
     if show_reveal_button:
         buttons.append(
             InlineKeyboardButton(
-                text="👁 Tap to reveal",
+                text="👁 REVEAL",
                 callback_data=PhotoRevealCallback(media_id=media_obj.id).pack(),
             )
         )
     if index < total - 1:
         buttons.append(
             InlineKeyboardButton(
-                text="▶️",
+                text="→",
                 callback_data=CarouselNavCallback(profile_id=profile_id, index=index + 1).pack(),
             )
         )
