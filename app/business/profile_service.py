@@ -172,20 +172,35 @@ async def _schedule_reblur_carousel(
     nav_markup,
     delay_seconds: int,
 ):
-    """After `delay_seconds`, swap the revealed photo back to blurred. One-time only - no further reveals."""
+    """
+    After `delay_seconds`, DELETES the revealed message entirely and sends a fresh
+    blurred one in its place - rather than just editing it back to blurred.
+
+    Why delete instead of edit: Telegram's "Shared Media" tab for a chat reflects
+    the live state of messages. Editing a message back to blurred can still leave
+    traces of the clear version cached. Deleting the message is the one behavior
+    that reliably scrubs it from Shared Media across Telegram clients - a fresh
+    message with the blurred photo is sent immediately after, so the carousel
+    still works, it just appears as a new message rather than updating in place.
+    """
     import asyncio
 
     async def _reblur():
         await asyncio.sleep(max(delay_seconds, 2))  # minimum 2s so "instant" is still visible at all
         try:
-            await bot.edit_message_media(
+            await bot.delete_message(chat_id=chat_id, message_id=message_id)
+        except Exception as e:
+            logger.log("PHOTO_REVEAL", f"Could not delete revealed message: {e}")
+
+        try:
+            await bot.send_photo(
                 chat_id=chat_id,
-                message_id=message_id,
-                media=InputMediaPhoto(media=blurred_file_id, caption=caption_with_dots + "\n🔒 Already revealed"),
+                photo=blurred_file_id,
+                caption=caption_with_dots + "\n🔒 Already revealed",
                 reply_markup=nav_markup,
             )
         except Exception as e:
-            logger.log("PHOTO_REVEAL", f"Re-blur failed (message likely deleted/changed): {e}")
+            logger.log("PHOTO_REVEAL", f"Could not send fresh blurred photo: {e}")
 
     task = asyncio.create_task(_reblur())
     _pending_reblur_tasks.add(task)
