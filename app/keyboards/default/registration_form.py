@@ -170,3 +170,22 @@ class RegistrationFormKb:
         else:
             kb = del_kb
         return kb
+
+    @staticmethod
+    def photo_privacy() -> ReplyKeyboardMarkup:
+        """Pick a blur/reveal setting for the photos just uploaded"""
+        kb = ReplyKeyboardMarkup(
+            resize_keyboard=True,
+            keyboard=[
+                [KeyboardButton(text=_("🚫 No Blur"))],
+                [
+                    KeyboardButton(text=_("👁 Instant")),
+                    KeyboardButton(text=_("⏱ 3s")),
+                ],
+                [
+                    KeyboardButton(text=_("⏱ 10s")),
+                    KeyboardButton(text=_("⏱ 30s")),
+                ],
+            ],
+        )
+        return kb

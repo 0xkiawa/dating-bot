@@ -538,4 +538,15 @@ Enter a valid maximum age:
         return _("⚠️ Numbers only! Enter an age between 18-99.")
 
 
+    @property
+    def PHOTO_PRIVACY_PROMPT(self):
+        return _("""
+🔒 <b>Photo Privacy</b>
+
+Want your photos blurred until someone taps to reveal them? Each viewer only gets ONE look, ever — then it stays blurred for them permanently.
+
+Pick how long a reveal lasts, or skip blur entirely if you're comfortable showing your photos normally:
+""")
+
+
 message_text = MessageText()

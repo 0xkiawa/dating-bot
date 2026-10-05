@@ -95,6 +95,13 @@ async def _age(message: types.Message, state: FSMContext, user: UserModel):
     await message.answer(text=mt.PHOTO, reply_markup=kb)
 
 
+async def _go_to_photo_privacy(message: types.Message, state: FSMContext) -> None:
+    """Shared exit point from the photo step - always asks about blur privacy next"""
+    await state.set_state(ProfileCreate.photo_privacy)
+    kb = RegistrationFormKb.photo_privacy()
+    await message.answer(text=mt.PHOTO_PRIVACY_PROMPT, reply_markup=kb)
+
+
 # -< Photo >-
 @dating_router.message(StateFilter(ProfileCreate.photo), filters.IsPhoto())
 async def _photo(message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession):
@@ -108,10 +115,7 @@ async def _photo(message: types.Message, state: FSMContext, user: UserModel, ses
             photos = [photo.media for photo in existing_photos]
             await state.update_data(photos=photos)
 
-        # Move to description
-        kb = RegistrationFormKb.description(user)
-        await message.answer(text=mt.DESCRIPTION, reply_markup=kb)
-        await state.set_state(ProfileCreate.description)
+        await _go_to_photo_privacy(message, state)
         return
 
     elif message.text in filters.localized_options(filters.SAVE_PHOTO_OPTIONS):
@@ -121,11 +125,7 @@ async def _photo(message: types.Message, state: FSMContext, user: UserModel, ses
 
         # Update state data with current photos
         await state.update_data(photos=photos)
-
-        # Move to description
-        kb = RegistrationFormKb.description(user)
-        await message.answer(text=mt.DESCRIPTION, reply_markup=kb)
-        await state.set_state(ProfileCreate.description)
+        await _go_to_photo_privacy(message, state)
         return
 
     elif message.photo:
@@ -146,14 +146,35 @@ async def _photo(message: types.Message, state: FSMContext, user: UserModel, ses
                 reply_markup=RegistrationFormKb.photo_add(),
             )
         else:
-            # All 3 photos uploaded - move to description
+            # All 3 photos uploaded - move to privacy step
             await message.answer(mt.PHOTO_ALL_UPLOADED())
-
-            kb = RegistrationFormKb.description(user)
-            await message.answer(text=mt.DESCRIPTION, reply_markup=kb)
-            await state.set_state(ProfileCreate.description)
+            await _go_to_photo_privacy(message, state)
     else:
         await message.answer(mt.PHOTO_UPLOAD_INSTRUCTION)
+
+
+# -< Photo Privacy >- NEW
+@dating_router.message(StateFilter(ProfileCreate.photo_privacy), F.text)
+async def _photo_privacy(message: types.Message, state: FSMContext, user: UserModel):
+    privacy_map = {
+        _("🚫 No Blur"): None,
+        _("👁 Instant"): 0,
+        _("⏱ 3s"): 3,
+        _("⏱ 10s"): 10,
+        _("⏱ 30s"): 30,
+    }
+
+    if message.text not in privacy_map:
+        await message.answer(mt.INVALID_OPTION)
+        return
+
+    reveal_duration = privacy_map[message.text]
+    await state.update_data(reveal_duration=reveal_duration)
+
+    # Move to description, same as before
+    kb = RegistrationFormKb.description(user)
+    await message.answer(text=mt.DESCRIPTION, reply_markup=kb)
+    await state.set_state(ProfileCreate.description)
 
 
 # -< Description >-
@@ -197,6 +218,7 @@ async def _hosting(
     
     data = await state.get_data()
     photos = data.get("photos", [])
+    reveal_duration = data.get("reveal_duration")  # NEW
     
     await state.clear()
 
@@ -217,6 +239,12 @@ async def _hosting(
         hosting=hosting,
     )
 
+    # NEW: Apply the chosen blur/reveal setting to this user's photos
+    saved_photos = await ProfileMedia.get_profile_photos(session, message.from_user.id)
+    for photo in saved_photos:
+        photo.reveal_duration = reveal_duration
+    await session.commit()
+
     await message.answer(mt.PROFILE_CREATED)
     await menu(chat_id=user.id)
 
@@ -227,5 +255,6 @@ async def _hosting(
 # 3. -< City >- (REMOVED: Find role)
 # 4. -< Age >-
 # 5. -< Photo >-
-# 6. -< Description >-
-# 7. -< Hosting >-
+# 6. -< Photo Privacy >- (NEW)
+# 7. -< Description >-
+# 8. -< Hosting >-

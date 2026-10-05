@@ -12,6 +12,7 @@ class ProfileCreate(StatesGroup):
     age = State()
     city = State()
     photo = State()
+    photo_privacy = State()  # NEW: optional blur/reveal setting for uploaded photos
     description = State()
     hosting = State()
 
