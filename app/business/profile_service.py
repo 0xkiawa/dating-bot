@@ -198,6 +198,7 @@ async def _schedule_reblur_carousel(
                 photo=blurred_file_id,
                 caption=caption_with_dots + "\n🔒 Already revealed",
                 reply_markup=nav_markup,
+                protect_content=True,
             )
         except Exception as e:
             logger.log("PHOTO_REVEAL", f"Could not send fresh blurred photo: {e}")
@@ -234,7 +235,7 @@ async def send_profile_with_dist(
         viewer_id=user.id,
         caption_text=text,
     )
-    await bot.send_photo(chat_id=user.id, photo=photo_id, caption=caption, reply_markup=markup)
+    await bot.send_photo(chat_id=user.id, photo=photo_id, caption=caption, reply_markup=markup, protect_content=True)
 
 
 async def complaint_to_profile(
