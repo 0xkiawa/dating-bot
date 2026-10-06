@@ -158,8 +158,8 @@ async def _photo(message: types.Message, state: FSMContext, user: UserModel, ses
 async def _photo_privacy(message: types.Message, state: FSMContext, user: UserModel):
     privacy_map = {
         _("🚫 No Blur"): None,
-        _("👁 Instant"): 0,
         _("⏱ 3s"): 3,
+        _("⏱ 5s"): 5,
         _("⏱ 10s"): 10,
         _("⏱ 30s"): 30,
     }

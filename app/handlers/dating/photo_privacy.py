@@ -15,8 +15,8 @@ from loader import _
 
 PRIVACY_LABELS = {
     None: "🚫 No Blur",
-    0: "👁 Instant",
     3: "⏱ 3s",
+    5: "⏱ 5s",
     10: "⏱ 10s",
     30: "⏱ 30s",
 }
@@ -57,8 +57,8 @@ async def privacy_selection_handler(
 ) -> None:
     privacy_map = {
         _("🚫 No Blur"): None,
-        _("👁 Instant"): 0,
         _("⏱ 3s"): 3,
+        _("⏱ 5s"): 5,
         _("⏱ 10s"): 10,
         _("⏱ 30s"): 30,
     }

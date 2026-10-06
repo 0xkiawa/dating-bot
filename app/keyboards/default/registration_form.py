@@ -179,8 +179,8 @@ class RegistrationFormKb:
             keyboard=[
                 [KeyboardButton(text=_("🚫 No Blur"))],
                 [
-                    KeyboardButton(text=_("👁 Instant")),
                     KeyboardButton(text=_("⏱ 3s")),
+                    KeyboardButton(text=_("⏱ 5s")),
                 ],
                 [
                     KeyboardButton(text=_("⏱ 10s")),
