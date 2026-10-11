@@ -3,21 +3,27 @@ import re
 from aiogram import types
 from aiogram.filters import Command, CommandObject
 from aiogram.filters.state import StateFilter
+from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.filters.kb_filter import BlockUserCallback
-from app.routers import admin_router
+from app.routers import admin_router, common_router
 from database.models.complaint import CompleintStatus
 from database.services.complaint import Compleint
 from database.services.user import User
+from .access import is_admin_id
 
 
-@admin_router.message(StateFilter(None), Command("ban"))
-@admin_router.message(StateFilter(None), Command("unban"))
+@common_router.message(Command("ban"))
+@common_router.message(Command("unban"))
 async def ban_unban_users_command(
-    message: types.Message, command: CommandObject, session: AsyncSession
+    message: types.Message, command: CommandObject, session: AsyncSession, state: FSMContext
 ) -> None:
     """Блокирует или разблокирует пользователей, принимает список id через ','"""
+    if not is_admin_id(message.from_user.id):
+        return
+
+    await state.clear()
 
     command_name = command.command.lower()
     is_banned = command_name == "ban"

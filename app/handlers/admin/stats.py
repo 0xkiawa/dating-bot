@@ -1,14 +1,16 @@
 from aiogram import F, types
 from aiogram.filters import Command
 from aiogram.filters.state import StateFilter
+from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.filters.kb_filter import StatsCallback
 from app.keyboards.inline.admin import stats_ikb
-from app.routers import admin_router
+from app.routers import admin_router, common_router
 from data.config import GRAPH_FILE_PATH
 from database.services.stats import Stats
 from utils.graphs import StatsGraph
+from .access import is_admin_id
 
 stats_graph = StatsGraph()
 
@@ -40,10 +42,14 @@ REFERRAL_STATS = """
 """
 
 
-@admin_router.message(StateFilter(None), Command("stats"))
+@common_router.message(Command("stats"))
 @admin_router.message(StateFilter(None), F.text == "📊 Statistics")
-async def _stats_command(message: types.Message, session: AsyncSession) -> None:
+async def _stats_command(message: types.Message, state: FSMContext, session: AsyncSession) -> None:
     """Отправляет администратору меню статистики"""
+    if not is_admin_id(message.from_user.id):
+        return
+
+    await state.clear()
     await message.answer("Stats sending...")
 
     data = await Stats.get_registration_data(session)

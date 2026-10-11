@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.keyboards.default.base import mode_confirm_kb, mode_menu_kb, age_range_search_kb
-from app.routers import dating_router
+from app.routers import common_router, dating_router
 from app.states.default import Search
 from app.text import message_text as mt
 from loader import _
@@ -27,7 +27,7 @@ class ModeConfirmationFilter(Filter):
 
 
 # Command handlers for direct mode access
-@dating_router.message(Command("fun"))
+@common_router.message(Command("fun"))
 async def fun_mode_command(
     message: types.Message, 
     state: FSMContext, 
@@ -38,7 +38,7 @@ async def fun_mode_command(
     await handle_mode_switch(message, state, user, session, "fun")
 
 
-@dating_router.message(Command("dates"))
+@common_router.message(Command("dates"))
 async def dates_mode_command(
     message: types.Message, 
     state: FSMContext, 
@@ -49,7 +49,7 @@ async def dates_mode_command(
     await handle_mode_switch(message, state, user, session, "dates")
 
 
-@dating_router.message(Command("friends"))
+@common_router.message(Command("friends"))
 async def friends_mode_command(
     message: types.Message, 
     state: FSMContext, 
@@ -73,6 +73,8 @@ async def handle_mode_switch(
     - If different mode, ask for confirmation
     - If same mode, show mode menu
     """
+    # Mode commands intentionally interrupt any active flow (for example, a search).
+    await state.clear()
     current_mode = await User.get_mode(session, user.id)
     
     if not current_mode:

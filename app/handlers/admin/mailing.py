@@ -7,17 +7,22 @@ from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.routers import admin_router
+from app.routers import admin_router, common_router
 from app.states.admin import Mailing
 from database.services.profile import Profile
 from database.services.user import User
 from utils.logging import logger
+from .access import is_admin_id
 
 
-@admin_router.message(StateFilter(None), Command("mailing"))
+@common_router.message(Command("mailing"))
 @admin_router.message(StateFilter(None), F.text == "📨 Mailing")
 async def users_mailing_panel(message: types.Message, state: FSMContext) -> None:
     """Admin panel for user mailing."""
+    if not is_admin_id(message.from_user.id):
+        return
+
+    await state.clear()
     await message.answer(
         "📢 Send your message for mailing.\n"
         "You can send text, photo, video, or document. It will be forwarded to all users.\n\n"

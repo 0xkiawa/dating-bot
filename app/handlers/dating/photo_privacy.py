@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.business.menu_service import menu
 from app.keyboards.default.registration_form import RegistrationFormKb
-from app.routers import dating_router
+from app.routers import common_router, dating_router
 from app.states.default import PhotoPrivacyEdit
 from app.text import message_text as mt
 from database.models.user import UserModel
@@ -22,11 +22,13 @@ PRIVACY_LABELS = {
 }
 
 
-@dating_router.message(StateFilter(None), Command("privacy"))
+@common_router.message(Command("privacy"))
 async def privacy_command(
     message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession
 ) -> None:
     """Lets an existing user change their photo blur/reveal setting without recreating their profile."""
+    await state.clear()
+
     if not user.profile:
         await message.answer(mt.NO_PROFILE_FOR_SEARCH)
         return

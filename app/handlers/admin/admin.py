@@ -1,15 +1,20 @@
 from aiogram import types
 from aiogram.filters import Command
-from aiogram.filters.state import StateFilter
+from aiogram.fsm.context import FSMContext
 
 from app.commands import set_admins_commands
 from app.keyboards.default.base import admin_kb
-from app.routers import admin_router
+from app.routers import common_router
+from .access import is_admin_id
 
 
-@admin_router.message(StateFilter(None), Command("admin"))
-async def _admin_command(message: types.Message) -> None:
+@common_router.message(Command("admin"))
+async def _admin_command(message: types.Message, state: FSMContext) -> None:
     """Админ панель"""
+    if not is_admin_id(message.from_user.id):
+        return
+
+    await state.clear()
     await set_admins_commands(message.from_user.id)
     text = """
 🔧 <b>Admin panel</b>
