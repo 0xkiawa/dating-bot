@@ -79,7 +79,7 @@ class IsName(Filter):
 
 class IsAge(Filter):
     async def __call__(self, message: Message) -> bool:
-        return bool(message.text.isdigit() and int(message.text) < 100 and int(message.text) > 6)
+        return bool(message.text.isdigit() and 18 <= int(message.text) <= 99)
 
 
 class IsCity(Filter):

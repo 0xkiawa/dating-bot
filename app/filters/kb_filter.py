@@ -42,3 +42,14 @@ class ModeConfirmCallback(CallbackData, prefix="modeconfirm"):
 class BrowseFilterCallback(CallbackData, prefix="browsefilter"):
     step: str
     value: str
+
+
+class ProfileActionCallback(CallbackData, prefix="profileaction"):
+    action: str
+    profile_id: int
+    value: str
+
+
+class MatchPreferenceCallback(CallbackData, prefix="matchpref"):
+    action: str
+    value: str

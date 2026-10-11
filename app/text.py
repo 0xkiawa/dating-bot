@@ -356,7 +356,11 @@ Want to come back? Just send /start to reactivate!
 
     @property
     def INVALID_AGE(self):
-        return _("⚠️ Age must be a number! 🔢")
+        return _("⚠️ Enter a whole-number age from 18 to 99.")
+
+    @property
+    def ADULTS_ONLY(self):
+        return _("CONQUEER is for adults 18 and older. Please enter an age of at least 18.")
 
     @property
     def INVITE_FRIENDS(self):

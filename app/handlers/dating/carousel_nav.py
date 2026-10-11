@@ -1,14 +1,15 @@
 from aiogram import types
+from aiogram.fsm.context import FSMContext
 from aiogram.types import InputMediaPhoto
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.business.profile_service import build_carousel_page
+from app.business.profile_service import build_carousel_page, build_profile_caption
 from app.filters.kb_filter import CarouselNavCallback
 from app.routers import dating_router
+from app.states.default import Search
 from database.models.user import UserModel
 from database.services import Profile
 from database.services.profile_media import ProfileMedia
-from database.services.search import haversine_distance
 
 
 @dating_router.callback_query(CarouselNavCallback.filter())
@@ -17,6 +18,7 @@ async def carousel_nav_handler(
     callback_data: CarouselNavCallback,
     user: UserModel,
     session: AsyncSession,
+    state: FSMContext,
 ) -> None:
     """Handles ◀️/▶️ taps - edits the message in place to show the requested photo index."""
     profile = await Profile.get(session, callback_data.profile_id)
@@ -29,15 +31,18 @@ async def carousel_nav_handler(
         await callback.answer()
         return
 
-    # Rebuild the same caption text used in send_profile_with_dist
-    if user.profile.is_shared_location and profile.is_shared_location:
-        distance = haversine_distance(
-            user.profile.latitude, user.profile.longitude, profile.latitude, profile.longitude
-        )
-        city = f"📍 {round(distance, 2)} km"
-    else:
-        city = profile.city
-    text = f"{profile.name}, {profile.age}, {city}\n{profile.description}"
+    search_active = await state.get_state() in {
+        Search.search.state,
+        Search.message.state,
+    }
+    state_data = await state.get_data()
+    text = build_profile_caption(
+        user.profile,
+        profile,
+        mode=state_data.get("current_mode"),
+        include_reasons=search_active,
+        caption_limit=True,
+    )
 
     photo_id, caption, markup = await build_carousel_page(
         session=session,
@@ -46,6 +51,7 @@ async def carousel_nav_handler(
         index=callback_data.index,
         viewer_id=callback.from_user.id,
         caption_text=text,
+        include_actions=search_active,
     )
 
     await callback.message.edit_media(

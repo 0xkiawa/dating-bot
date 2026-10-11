@@ -5,6 +5,7 @@ from aiogram import F, types
 from aiogram.filters import Command, Filter
 from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
+from aiogram.types import ReplyKeyboardRemove
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.business.menu_service import answer_inline_message
@@ -211,9 +212,21 @@ async def mode_menu_callback(
             username=callback.from_user.username,
         )
     elif callback_data.action == "age":
-        from app.handlers.dating.age_filter import start_age_filter
+        from app.keyboards.inline.match_preferences import age_preferences_ikb
 
-        await start_age_filter(callback.message, state)
+        if not user.profile:
+            await callback.message.edit_text(
+                mt.NO_PROFILE_FOR_SEARCH, reply_markup=mode_menu_ikb()
+            )
+            return
+        await callback.message.edit_text(
+            _("Choose the age range you want to see:"),
+            reply_markup=age_preferences_ikb(user.profile),
+        )
+    elif callback_data.action == "preferences":
+        from app.handlers.dating.preferences import show_preferences
+
+        await show_preferences(callback.message, user)
     else:
         await callback.message.edit_text(mt.INVALID_OPTION, reply_markup=mode_menu_ikb())
 
@@ -560,8 +573,6 @@ async def start_mode_search(
     browse_filter_message_id: int | None = None,
 ) -> None:
     """Start searching in specified mode with hosting, role, and age filters"""
-    from app.keyboards.default.base import search_kb
-
     if not mode or not user.profile:
         await state.clear()
         text = mt.NO_MODE_SELECTED if not mode else mt.NO_PROFILE_FOR_SEARCH
@@ -578,6 +589,7 @@ async def start_mode_search(
 
     original_find_role = user.profile.find_role
     user.profile.find_role = role_filter
+    await message.answer(mt.SEARCH, reply_markup=ReplyKeyboardRemove())
 
     try:
         profile_list = await search_profiles(
@@ -598,7 +610,6 @@ async def start_mode_search(
                 message_id=browse_filter_message_id,
                 reply_markup=None,
             )
-        await message.answer(mt.SEARCH, reply_markup=search_kb)
         await state.set_state(Search.search)
         await state.update_data(
             ids=profile_list,
@@ -611,7 +622,13 @@ async def start_mode_search(
         )
 
         first_profile = await Profile.get(session, profile_list[0])
-        await send_profile_with_dist(user=user, profile=first_profile, session=session)
+        await send_profile_with_dist(
+            user=user,
+            profile=first_profile,
+            session=session,
+            include_actions=True,
+            mode=mode,
+        )
     else:
         await state.clear()
         if browse_filter_chat_id and browse_filter_message_id:

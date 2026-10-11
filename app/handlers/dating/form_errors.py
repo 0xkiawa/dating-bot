@@ -30,6 +30,9 @@ async def _incorrect_name(message: types.Message):
 @dating_router.message(StateFilter(ProfileCreate.age))
 async def _incorrect_age(message: types.Message):
     """Age filter error"""
+    if message.text and message.text.isdigit() and int(message.text) < 18:
+        await message.answer(mt.ADULTS_ONLY)
+        return
     await message.answer(mt.INVALID_AGE)
 
 

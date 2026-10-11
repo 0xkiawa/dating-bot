@@ -1,4 +1,5 @@
 from aiogram import types
+from aiogram.fsm.context import FSMContext
 from aiogram.types import InputMediaPhoto
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,9 +7,11 @@ from app.business.profile_service import (
     _get_or_create_blurred_file_id,
     _schedule_reblur_carousel,
     build_carousel_page,
+    build_profile_caption,
 )
 from app.filters.kb_filter import PhotoRevealCallback
 from app.routers import dating_router
+from app.states.default import Search
 from database.services import Profile
 from database.services.photo_reveal import PhotoReveal
 from database.services.profile_media import ProfileMedia
@@ -19,6 +22,7 @@ async def reveal_photo_handler(
     callback: types.CallbackQuery,
     callback_data: PhotoRevealCallback,
     session: AsyncSession,
+    state: FSMContext,
 ) -> None:
     """
     One-time photo reveal, within the carousel. Once used, this viewer can NEVER
@@ -49,18 +53,19 @@ async def reveal_photo_handler(
     total = len(media_items)
     dots = "\n" + "".join("●" if i == index else "○" for i in range(total)) if total > 1 else ""
 
-    # Rebuild caption text (same pattern as send_profile_with_dist / nav handler)
-    from database.services.search import haversine_distance
-
     viewer = await Profile.get(session, viewer_id)
-    if viewer and viewer.is_shared_location and profile.is_shared_location:
-        distance = haversine_distance(
-            viewer.latitude, viewer.longitude, profile.latitude, profile.longitude
-        )
-        city = f"📍 {round(distance, 2)} km"
-    else:
-        city = profile.city
-    caption_text = f"{profile.name}, {profile.age}, {city}\n{profile.description}"
+    search_active = await state.get_state() in {
+        Search.search.state,
+        Search.message.state,
+    }
+    state_data = await state.get_data()
+    caption_text = build_profile_caption(
+        viewer,
+        profile,
+        mode=state_data.get("current_mode"),
+        include_reasons=search_active,
+        caption_limit=True,
+    )
 
     # Build nav-only keyboard (no reveal button - it's used up)
     _, _, nav_markup = await build_carousel_page(
@@ -70,6 +75,7 @@ async def reveal_photo_handler(
         index=index,
         viewer_id=viewer_id,
         caption_text=caption_text,
+        include_actions=search_active,
     )
 
     # Show the REAL clear photo right now

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.filters.kb_filter import CarouselNavCallback, PhotoRevealCallback
 from app.keyboards.inline.admin import block_user_ikb
+from app.keyboards.inline.profile_actions import profile_actions_ikb
 from app.text import message_text as mt
 from data.config import tgbot
 from database.models.profile import ProfileModel
@@ -15,7 +16,7 @@ from database.models.user import UserModel
 from database.services.complaint import Compleint
 from database.services.photo_reveal import PhotoReveal
 from database.services.profile_media import ProfileMedia
-from database.services.search import haversine_distance
+from database.services.search import get_match_reasons, haversine_distance
 from loader import bot
 from utils.logging import logger
 
@@ -90,6 +91,47 @@ def _build_dots(total: int, index: int) -> str:
     return "\n" + "   ".join("⬤" if i == index else "◯" for i in range(total))
 
 
+def build_profile_caption(
+    viewer_profile: ProfileModel | None,
+    profile: ProfileModel,
+    mode: str | None = None,
+    include_reasons: bool = False,
+    caption_limit: bool = False,
+) -> str:
+    """Build a consistent, privacy-aware caption for a profile card."""
+    distance = None
+    if (
+        viewer_profile
+        and viewer_profile.is_shared_location
+        and profile.is_shared_location
+        and viewer_profile.latitude is not None
+        and viewer_profile.longitude is not None
+        and profile.latitude is not None
+        and profile.longitude is not None
+    ):
+        distance = haversine_distance(
+            viewer_profile.latitude,
+            viewer_profile.longitude,
+            profile.latitude,
+            profile.longitude,
+        )
+        city = "📍 1 km or less" if distance < 1 else f"📍 ~{distance} km"
+    else:
+        city = profile.city
+
+    heading = f"{profile.name}, {profile.age}, {city}\n"
+    description = profile.description or ""
+    suffix = ""
+    if include_reasons and viewer_profile:
+        reasons = get_match_reasons(viewer_profile, profile, mode, distance)
+        suffix = "\n\n✨ " + " · ".join(reasons)
+
+    if caption_limit and len(heading) + len(description) + len(suffix) > 950:
+        available = max(0, 950 - len(heading) - len(suffix) - 1)
+        description = description[:available].rstrip() + "…"
+    return heading + description + suffix
+
+
 async def build_carousel_page(
     session: AsyncSession,
     profile_id: int,
@@ -97,6 +139,7 @@ async def build_carousel_page(
     index: int,
     viewer_id: int,
     caption_text: str,
+    include_actions: bool = False,
 ):
     """
     Builds everything needed to show ONE page of a profile's photo carousel:
@@ -159,7 +202,7 @@ async def build_carousel_page(
         builder.adjust(len(buttons))
 
     full_caption = f"{caption_text}{dots}{extra_caption}"
-    markup = builder.as_markup() if buttons else None
+    markup = profile_actions_ikb(profile_id, buttons) if include_actions else builder.as_markup() if buttons else None
 
     return photo_id, full_caption, markup
 
@@ -209,22 +252,27 @@ async def _schedule_reblur_carousel(
 
 
 async def send_profile_with_dist(
-    user: UserModel, profile: ProfileModel, session: AsyncSession
+    user: UserModel,
+    profile: ProfileModel,
+    session: AsyncSession,
+    include_actions: bool = False,
+    mode: str | None = None,
 ) -> None:
     """Отправляет профиль пользователя с расстоянием, как карусель фото (◀️▶️ + точки + reveal)"""
     media_items = await ProfileMedia.get_profile_photos(session=session, profile_id=profile.id)
 
-    if user.profile.is_shared_location and profile.is_shared_location:
-        distance = haversine_distance(
-            user.profile.latitude, user.profile.longitude, profile.latitude, profile.longitude
-        )
-        city = f"📍 {round(distance, 2)} km"
-    else:
-        city = profile.city
-    text = f"{profile.name}, {profile.age}, {city}\n{profile.description}"
+    text = build_profile_caption(
+        user.profile,
+        profile,
+        mode=mode,
+        include_reasons=include_actions,
+        caption_limit=bool(media_items),
+    )
+
+    markup = profile_actions_ikb(profile.id) if include_actions else None
 
     if not media_items:
-        await bot.send_message(chat_id=user.id, text=text)
+        await bot.send_message(chat_id=user.id, text=text, reply_markup=markup)
         return
 
     photo_id, caption, markup = await build_carousel_page(
@@ -234,6 +282,7 @@ async def send_profile_with_dist(
         index=0,
         viewer_id=user.id,
         caption_text=text,
+        include_actions=include_actions,
     )
     await bot.send_photo(chat_id=user.id, photo=photo_id, caption=caption, reply_markup=markup, protect_content=True)
 
@@ -243,15 +292,14 @@ async def complaint_to_profile(
 ) -> None:
     """Отправляет в группу модераторов анкету пользователя
     на которого пришла жалоба"""
+    complaint = await Compleint.create(
+        session=session,
+        sender_id=sender.id,
+        receiver_id=receiver.id,
+        reason=reason,
+    )
     if MODERATOR_GROUP_ID:
         try:
-            complaint = await Compleint.create(
-                session=session,
-                sender_id=sender.id,
-                receiver_id=receiver.id,
-                reason=reason,
-            )
-
             await send_profile(MODERATOR_GROUP_ID, receiver.profile, session)
 
             text = mt.REPORT_TO_USER.format(
@@ -271,5 +319,5 @@ async def complaint_to_profile(
                     username=receiver.username,
                 ),
             )
-        except:
-            logger.error("Сообщение в модераторскую группу не отправленно")
+        except Exception as exc:
+            logger.error(f"Could not notify moderators about complaint {complaint.id}: {exc}")

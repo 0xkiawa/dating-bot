@@ -1,126 +1,128 @@
 import math
 import random
-import time
 from datetime import datetime, timedelta
 
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data.config import search
+from database.models.complaint import CompleintStatus, ProfileCompleintsModel
 from database.models.match import MatchModel, MatchStatus
 from database.models.profile import ProfileModel
 from database.models.user import UserModel
 from utils.logging import logger
 
 
-def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
-    """
-    Returns approximate distance between two points (in kilometers)
-    by latitude and longitude coordinates.
-    """
-    phi1 = math.radians(lat1)
-    phi2 = math.radians(lat2)
+def haversine_distance(
+    lat1: float,
+    lon1: float,
+    lat2: float,
+    lon2: float,
+    earth_radius: int | None = None,
+) -> int:
+    """Return the approximate distance between two coordinates in kilometers."""
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
     d_phi = math.radians(lat2 - lat1)
     d_lambda = math.radians(lon2 - lon1)
-
-    a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-    return round(search.EARTH_RADIUS * c)
+    a = (
+        math.sin(d_phi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    )
+    a = min(1.0, max(0.0, a))
+    return round(
+        (earth_radius or search.EARTH_RADIUS)
+        * 2
+        * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    )
 
 
 def calculate_age_range(age: int) -> int:
-    """
-    Calculates dynamic age range based on user's age.
-
-    Formula: max(MIN_AGE_RANGE, age * AGE_RANGE_MULTIPLIER)
-    Limits: minimum MIN_AGE_RANGE years, maximum MAX_AGE_RANGE years
-
-    Examples:
-    - 16 years → 3 years
-    - 25 years → 4 years
-    - 30 years → 5 years
-    - 50 years → 8 years
-    - 60+ years → 15 years (maximum)
-    """
+    """Calculate the automatic age range used when no saved range is set."""
     calculated_range = max(search.MIN_AGE_RANGE, age * search.AGE_RANGE_MULTIPLIER)
     return min(search.MAX_AGE_RANGE, round(calculated_range))
 
 
 def build_role_matching_conditions(user_role: str, user_find_role: str):
-    """
-    Build role matching conditions with MUTUAL compatibility.
-    
-    Matching rules:
-    1. If I'm looking for 'all' -> I see everyone
-    2. If I'm looking for 'verse' -> I see only verse people
-    3. If I'm looking for 'top' -> I see tops and verse
-    4. If I'm looking for 'bottom' -> I see bottoms and verse
-    
-    AND the other person must also be willing to see me:
-    - If they're looking for 'all' -> they see me
-    - If they're looking for 'verse' -> they see me if I'm verse
-    - If they're looking for my specific role -> they see me
-    - Verse people looking for specific roles also see that role
-    """
-    
-    # PART 1: What roles do I want to see?
-    if user_find_role == 'all':
-        i_want_them = True  # I want to see everyone
-    elif user_find_role == 'verse':
-        i_want_them = ProfileModel.role == 'verse'
-    elif user_find_role == 'top':
-        i_want_them = or_(
-            ProfileModel.role == 'top',
-            ProfileModel.role == 'verse'
-        )
-    elif user_find_role == 'bottom':
-        i_want_them = or_(
-            ProfileModel.role == 'bottom',
-            ProfileModel.role == 'verse'
-        )
+    """Return the legacy role compatibility predicate, applied in both directions."""
+    if user_find_role == "all":
+        wants_candidate = True
+    elif user_find_role == "verse":
+        wants_candidate = ProfileModel.role == "verse"
+    elif user_find_role == "top":
+        wants_candidate = or_(ProfileModel.role == "top", ProfileModel.role == "verse")
+    elif user_find_role == "bottom":
+        wants_candidate = or_(ProfileModel.role == "bottom", ProfileModel.role == "verse")
     else:
-        i_want_them = True  # Fallback to show all
-    
-    # PART 2: Would they want to see me?
-    if user_role == 'verse':
-        # Verse is compatible with everyone
-        other_wants_me = True
-    elif user_role == 'top':
-        # They should be looking for: top, verse, or all
-        other_wants_me = or_(
-            ProfileModel.find_role == 'top',
-            ProfileModel.find_role == 'verse',
-            ProfileModel.find_role == 'all'
-        )
-    elif user_role == 'bottom':
-        # They should be looking for: bottom, verse, or all
-        other_wants_me = or_(
-            ProfileModel.find_role == 'bottom',
-            ProfileModel.find_role == 'verse',
-            ProfileModel.find_role == 'all'
-        )
+        wants_candidate = True
+
+    if user_role == "verse":
+        candidate_wants_user = True
+    elif user_role == "top":
+        candidate_wants_user = ProfileModel.find_role.in_(("top", "verse", "all"))
+    elif user_role == "bottom":
+        candidate_wants_user = ProfileModel.find_role.in_(("bottom", "verse", "all"))
     else:
-        other_wants_me = True  # Fallback
-    
-    # Combine both conditions
-    if i_want_them is True and other_wants_me is True:
-        return True  # No filtering needed
-    elif i_want_them is True:
-        return other_wants_me
-    elif other_wants_me is True:
-        return i_want_them
-    else:
-        return and_(i_want_them, other_wants_me)
+        candidate_wants_user = True
+
+    if wants_candidate is True:
+        return candidate_wants_user
+    if candidate_wants_user is True:
+        return wants_candidate
+    return and_(wants_candidate, candidate_wants_user)
+
+
+def get_match_reasons(
+    viewer: ProfileModel,
+    candidate: ProfileModel,
+    mode: str | None = None,
+    distance_km: int | None = None,
+) -> list[str]:
+    """Return up to two concise, factual match reasons for a profile card."""
+    from loader import _
+
+    reasons: list[str] = []
+    shared = set(viewer.interests or []) & set(candidate.interests or [])
+    if shared:
+        reasons.append(_("You both like similar things"))
+
+    if mode == "dates":
+        viewer_intent = viewer.dating_intent or "open"
+        candidate_intent = candidate.dating_intent or "open"
+        if viewer_intent == candidate_intent and viewer_intent != "open":
+            reasons.append(_("You want the same kind of dating"))
+        elif "open" in (viewer_intent, candidate_intent):
+            reasons.append(_("Dating intentions may be compatible"))
+
+    if distance_km is not None and distance_km <= 25:
+        reasons.append(_("Nearby"))
+
+    if not reasons:
+        reasons.append(_("Fits your age and role preferences"))
+    return reasons[:2]
+
+
+def _match_score(viewer: ProfileModel, candidate: ProfileModel, distance_km: int, mode: str | None) -> int:
+    shared_interests = set(viewer.interests or []) & set(candidate.interests or [])
+    score = min(len(shared_interests), 3) * 3
+    if mode == "dates":
+        viewer_intent = viewer.dating_intent or "open"
+        candidate_intent = candidate.dating_intent or "open"
+        if viewer_intent == candidate_intent and viewer_intent != "open":
+            score += 4
+        elif "open" in (viewer_intent, candidate_intent):
+            score += 2
+    if distance_km <= 25:
+        score += 2
+    return score
 
 
 async def search_profiles(
     session: AsyncSession,
     profile: ProfileModel,
-    user_mode: str = None,
-    hosting_filter: str = None,
-    min_age: int = None,  # NEW: minimum age filter
-    max_age: int = None,  # NEW: maximum age filter
+    user_mode: str | None = None,
+    hosting_filter: str | None = None,
+    min_age: int | None = None,
+    max_age: int | None = None,
     initial_distance: float = search.INITIAL_DISTANCE,
     max_distance: float = search.MAX_DISTANCE,
     radius_step: float = search.RADIUS_STEP,
@@ -128,159 +130,130 @@ async def search_profiles(
     block_size: float = search.BLOCK_SIZE,
     earth_radius: int = search.EARTH_RADIUS,
     force_shuffle: bool = True,
-) -> list:
-    """
-    Dynamic profile search: starts with small radius and increases until enough profiles found.
-    Uses smart age range calculation and block-based shuffling.
-    Filters by matching mode (fun/dates/friends), role compatibility, hosting preference, and age range.
-    Excludes profiles already swiped on (liked permanently, disliked for 30 days).
-
-    Args:
-        session: Database session
-        profile: User profile for search
-        user_mode: Current user mode (fun/dates/friends)
-        hosting_filter: Hosting filter (yes/no/airbnb/all)
-        min_age: Minimum age filter (user preference)
-        max_age: Maximum age filter (user preference)
-        initial_distance: Initial search distance (km)
-        max_distance: Maximum search distance (km)
-        radius_step: Radius increase step (km)
-        min_profiles: Minimum number of profiles to find
-        block_size: Block size for shuffling (km)
-        earth_radius: Earth radius in km
-        force_shuffle: Force shuffle on every call
-    """
-
-    # Check that profile exists and has necessary data
-    if not profile:
+) -> list[int]:
+    """Find adult, mutually compatible profiles and rank them by saved preferences."""
+    if (
+        profile is None
+        or profile.age < 18
+        or profile.latitude is None
+        or profile.longitude is None
+    ):
         return []
 
-    if not profile.latitude or not profile.longitude:
+    automatic_range = calculate_age_range(profile.age)
+    saved_age_preference = (
+        profile.preferred_age_min is not None
+        or profile.preferred_age_max is not None
+    )
+    if min_age is not None and max_age is not None:
+        age_min, age_max = max(18, min_age), min(99, max_age)
+        if saved_age_preference:
+            age_min = max(age_min, profile.preferred_age_min or 18)
+            age_max = min(age_max, profile.preferred_age_max or 99)
+    elif saved_age_preference:
+        age_min = max(18, profile.preferred_age_min or 18)
+        age_max = profile.preferred_age_max or 99
+    else:
+        age_min = max(18, profile.age - automatic_range)
+        age_max = min(99, profile.age + automatic_range)
+
+    if age_min > age_max or age_max < 18:
         return []
 
-    # Use provided parameters or default values from config
+    search_limit = min(
+        max_distance or search.MAX_DISTANCE,
+        profile.preferred_distance_km or max_distance or search.MAX_DISTANCE,
+    )
     initial_distance = initial_distance or search.INITIAL_DISTANCE
-    max_distance = max_distance or search.MAX_DISTANCE
     radius_step = radius_step or search.RADIUS_STEP
     min_profiles = min_profiles or search.MIN_PROFILES
     block_size = block_size or search.BLOCK_SIZE
-    earth_radius = earth_radius or search.EARTH_RADIUS
 
-    # Calculate age range - use custom if provided, otherwise use dynamic calculation
-    if min_age is not None and max_age is not None:
-        # User has set custom age range
-        age_min = min_age
-        age_max = max_age
-        age_filter_type = "custom"
-    else:
-        # Use dynamic age range based on user's age
-        dynamic_age_range = calculate_age_range(profile.age)
-        age_min = profile.age - dynamic_age_range
-        age_max = profile.age + dynamic_age_range
-        age_filter_type = "auto"
-
-    found_profiles = []
-    current_distance = initial_distance
-
-    while current_distance <= max_distance and len(found_profiles) < min_profiles:
-        # Distance calculation using CASE for clamping (SQLite compatible)
-        cos_calc = (
-            func.cos(func.radians(profile.latitude))
-            * func.cos(func.radians(ProfileModel.latitude))
-            * func.cos(
-                func.radians(ProfileModel.longitude) - func.radians(profile.longitude)
-            )
-            + func.sin(func.radians(profile.latitude))
-            * func.sin(func.radians(ProfileModel.latitude))
-        )
-
-        # Clamp value between -1 and 1 using CASE (SQLite compatible)
-        clamped = case(
-            (cos_calc > 1.0, 1.0),
-            (cos_calc < -1.0, -1.0),
-            else_=cos_calc
-        )
-
-        distance_expr = func.acos(clamped) * earth_radius
-
-        # Build role matching conditions
-        role_matching = build_role_matching_conditions(profile.role, profile.find_role)
-
-        # Base query conditions
-        conditions = [
-            ProfileModel.is_active == True,
-            distance_expr < current_distance,
-            role_matching,  # Role-based matching
-            ProfileModel.age.between(age_min, age_max),  # Use calculated age range
-            ProfileModel.id != profile.id,
-        ]
-
-        # Add mode filter if user has active mode
-        if user_mode:
-            conditions.append(UserModel.current_mode == user_mode)
-
-        # Add hosting filter
-        if hosting_filter and hosting_filter != 'all':
-            conditions.append(ProfileModel.hosting == hosting_filter)
-
-        # NEW: Exclude profiles already swiped on.
-        # Likes/pending matches stay excluded permanently.
-        # Dislikes (Rejected) get recycled back into search after 30 days,
-        # so the pool doesn't run dry while the user base is still small.
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-        excluded_subquery = (
-            select(MatchModel.receiver_id)
-            .where(MatchModel.sender_id == profile.id)
-            .where(MatchModel.is_active == True)
-            .where(
-                or_(
-                    MatchModel.status != MatchStatus.Rejected,
-                    and_(
-                        MatchModel.status == MatchStatus.Rejected,
-                        MatchModel.updated_at >= thirty_days_ago,
-                    ),
-                )
-            )
-        )
-        conditions.append(ProfileModel.id.notin_(excluded_subquery))
-
-        stmt = (
-            select(ProfileModel.id, distance_expr.label("distance"))
-            .join(UserModel, ProfileModel.id == UserModel.id)
-            .where(and_(*conditions))
-            .order_by(distance_expr)
-        )
-
-        result = await session.execute(stmt)
-        found_profiles = result.fetchall()
-
-        # If few profiles found - increase radius and try again
-        current_distance += radius_step
-
-    # Split into blocks and shuffle
-    blocks = {}
-    for id, dist in found_profiles:
-        block_key = int(dist // block_size)
-        blocks.setdefault(block_key, []).append(id)
-
-    # Shuffle profiles within each block
-    if force_shuffle:
-        random.seed(int(time.time() * 1000000) % 2147483647)
-
-    for key in blocks:
-        random.shuffle(blocks[key])
-
-    # Collect sorted by blocks list with shuffled content
-    id_list = [id for key in sorted(blocks.keys()) for id in blocks[key]]
-
-    mode_info = f" in {user_mode} mode" if user_mode else ""
-    hosting_info = f" (hosting: {hosting_filter})" if hosting_filter and hosting_filter != 'all' else ""
-    age_info = f" (age: {age_min}-{age_max} [{age_filter_type}])"
-    
-    logger.log(
-        "DATABASE",
-        f"User {profile.id} ({profile.role} looking for {profile.find_role}{age_info}){mode_info}{hosting_info} found {len(id_list)} profiles "
-        f"in radius {current_distance - radius_step:.1f}km, shuffled={'Yes' if force_shuffle else 'No'}",
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    recent_swipes = select(MatchModel.receiver_id).where(
+        MatchModel.sender_id == profile.id,
+        MatchModel.is_active.is_(True),
+        or_(
+            MatchModel.status != MatchStatus.Rejected,
+            and_(
+                MatchModel.status == MatchStatus.Rejected,
+                MatchModel.updated_at >= thirty_days_ago,
+            ),
+        ),
+    )
+    reported_profiles = select(ProfileCompleintsModel.receiver_id).where(
+        ProfileCompleintsModel.sender_id == profile.id,
+        ProfileCompleintsModel.status.in_(
+            (CompleintStatus.Pending, CompleintStatus.Accepted)
+        ),
     )
 
-    return id_list
+    conditions = [
+        ProfileModel.id != profile.id,
+        ProfileModel.is_active.is_(True),
+        ProfileModel.age >= 18,
+        ProfileModel.age.between(age_min, age_max),
+        build_role_matching_conditions(profile.role, profile.find_role),
+        or_(ProfileModel.preferred_age_min.is_(None), ProfileModel.preferred_age_min <= profile.age),
+        or_(ProfileModel.preferred_age_max.is_(None), ProfileModel.preferred_age_max >= profile.age),
+        ProfileModel.id.not_in(recent_swipes),
+        ProfileModel.id.not_in(reported_profiles),
+    ]
+    if user_mode:
+        conditions.append(UserModel.current_mode == user_mode)
+    if hosting_filter and hosting_filter != "all":
+        conditions.append(ProfileModel.hosting == hosting_filter)
+
+    result = await session.execute(
+        select(ProfileModel).join(UserModel, ProfileModel.id == UserModel.id).where(and_(*conditions))
+    )
+
+    candidates: list[tuple[ProfileModel, int]] = []
+    for candidate in result.scalars():
+        if candidate.latitude is None or candidate.longitude is None:
+            continue
+        distance = haversine_distance(
+            profile.latitude,
+            profile.longitude,
+            candidate.latitude,
+            candidate.longitude,
+            earth_radius=earth_radius,
+        )
+        candidate_limit = min(
+            search_limit,
+            candidate.preferred_distance_km or search_limit,
+        )
+        if distance <= candidate_limit:
+            candidates.append((candidate, distance))
+
+    # Expand the effective radius until enough choices are available or the cap is reached.
+    # Candidate distances are already filtered against both people's saved distance limits.
+    radius = min(initial_distance, search_limit)
+    while radius < search_limit and sum(distance <= radius for _, distance in candidates) < min_profiles:
+        radius = min(radius + radius_step, search_limit)
+    candidates = [(item, distance) for item, distance in candidates if distance <= radius]
+
+    groups: dict[int, dict[int, list[tuple[ProfileModel, int]]]] = {}
+    for candidate, distance in candidates:
+        score = _match_score(profile, candidate, distance, user_mode)
+        # Rank better preference fits first, then nearby distance blocks; shuffle ties.
+        distance_bucket = int(distance // max(block_size, 1))
+        groups.setdefault(score, {}).setdefault(distance_bucket, []).append((candidate, distance))
+
+    if force_shuffle:
+        for distance_groups in groups.values():
+            for group in distance_groups.values():
+                random.shuffle(group)
+
+    ordered = [
+        item
+        for score in sorted(groups, reverse=True)
+        for distance_bucket in sorted(groups[score])
+        for item in groups[score][distance_bucket]
+    ]
+    logger.log(
+        "DATABASE",
+        f"User {profile.id} match search found {len(ordered)} adult profiles "
+        f"within {radius}km (age {age_min}-{age_max}, mode={user_mode or 'any'}).",
+    )
+    return [candidate.id for candidate, _distance in ordered]

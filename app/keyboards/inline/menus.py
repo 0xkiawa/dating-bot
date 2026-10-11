@@ -15,7 +15,11 @@ def main_menu_ikb() -> InlineKeyboardMarkup:
     builder.button(text="👤", callback_data=MainMenuCallback(action="profile"))
     builder.button(text="✉️", callback_data=MainMenuCallback(action="invite"))
     builder.button(text="🎭", callback_data=MainMenuCallback(action="modes"))
-    builder.adjust(2, 1)
+    builder.button(
+        text=f"⚙️ {_('Match preferences')}",
+        callback_data=MainMenuCallback(action="preferences"),
+    )
+    builder.adjust(2, 2)
     return builder.as_markup()
 
 
@@ -81,5 +85,9 @@ def mode_menu_ikb() -> InlineKeyboardMarkup:
     builder.button(text="🏠", callback_data=ModeMenuCallback(action="hosting"))
     builder.button(text="⬅️ Back", callback_data=ModeMenuCallback(action="back"))
     builder.button(text="💤", callback_data=ModeMenuCallback(action="menu"))
-    builder.adjust(2, 2, 2)
+    builder.button(
+        text=f"⚙️ {_('Preferences')}",
+        callback_data=ModeMenuCallback(action="preferences"),
+    )
+    builder.adjust(2, 2, 2, 1)
     return builder.as_markup()

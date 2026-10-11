@@ -16,7 +16,8 @@ async def create_tables():
         from database.connect import async_engine, async_session
         from database.models.base import BaseModel
         from database.models.profile import ProfileModel
-        from sqlalchemy import select
+        from database.schema import ensure_profile_match_columns
+        from sqlalchemy import update
         
         # Just import the modules to register the models
         import database.models.user
@@ -25,19 +26,22 @@ async def create_tables():
         logger.log("BOT", "Creating database tables...")
         async with async_engine.begin() as conn:
             await conn.run_sync(BaseModel.metadata.create_all)
+            await conn.run_sync(ensure_profile_match_columns)
         logger.log("BOT", "✅ Tables created successfully!")
         
-        # FIX: Force update all profiles to have is_active = True
-        logger.log("BOT", "Fixing existing profiles...")
+        # Existing profiles under 18 must not remain visible in discovery.
         async with async_session() as session:
-            result = await session.execute(select(ProfileModel))
-            profiles = result.scalars().all()
-            
-            for profile in profiles:
-                profile.is_active = True
-            
+            result = await session.execute(
+                update(ProfileModel)
+                .where(ProfileModel.age < 18)
+                .where(ProfileModel.is_active.is_(True))
+                .values(is_active=False)
+            )
             await session.commit()
-            logger.log("BOT", f"✅ Fixed {len(profiles)} profiles!")
+            logger.log(
+                "BOT",
+                f"Deactivated {result.rowcount or 0} profile(s) with age below 18.",
+            )
         
     except Exception as e:
         logger.log("BOT", f"❌ Error creating tables: {e}")
