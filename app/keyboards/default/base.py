@@ -1,6 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, ReplyKeyboardRemove
-
-from loader import _
+from aiogram.types import ReplyKeyboardRemove
 
 from .kb_generator import simple_kb_generator as kb_gen
 
@@ -19,6 +17,3 @@ return_to_menu_kb = kb_gen(["↩️"])
 
 age_filter_kb = kb_gen(["↩️"])
 hosting_kb = lambda: kb_gen(["Yes ✅", "No ❌"], ["Airbnb 🏨", "All 🌍"], ["↩️"])
-
-def age_range_search_kb() -> ReplyKeyboardMarkup:
-    return kb_gen([f"✅ {_('Use Default Matching')}"], ["↩️"])

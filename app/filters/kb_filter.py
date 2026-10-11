@@ -37,3 +37,8 @@ class ModeMenuCallback(CallbackData, prefix="modemenu"):
 
 class ModeConfirmCallback(CallbackData, prefix="modeconfirm"):
     switch: bool
+
+
+class BrowseFilterCallback(CallbackData, prefix="browsefilter"):
+    step: str
+    value: str

@@ -242,8 +242,13 @@ Select the role preference for your search:
         return _("""
 🎂 <b>Age range?</b>
 
-Tap "Use Default Matching" for automatic age matching, or type a minimum age (18-99) for a custom range.
+Choose an age range below, or tap <b>Custom</b> to enter your own ages.
+Use Default Matching keeps automatic age matching.
 """)
+
+    @property
+    def AGE_RANGE_CUSTOM_MIN_PROMPT(self):
+        return _("Enter a minimum age from 18 to 99:")
 
     def AGE_RANGE_SEARCH_MAX_PROMPT(self, min_age: int):
         return _("Minimum age: <b>{min_age}</b>\n\nNow type the maximum age:").format(min_age=min_age)

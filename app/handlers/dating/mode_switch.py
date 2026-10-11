@@ -1,28 +1,49 @@
+import asyncio
+from functools import wraps
+
 from aiogram import F, types
-from aiogram.filters import Filter
-from aiogram.filters import Command
+from aiogram.filters import Command, Filter
 from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.business.menu_service import answer_inline_message
-from app.filters.kb_filter import ModeMenuCallback
-from app.keyboards.default.base import age_range_search_kb
+from app.business.profile_service import send_profile_with_dist
+from app.filters.kb_filter import BrowseFilterCallback, ModeMenuCallback
 from app.keyboards.inline.menus import (
     main_menu_ikb,
     mode_confirm_ikb,
     mode_menu_ikb,
     mode_selection_ikb,
 )
+from app.keyboards.inline.search_filters import (
+    age_range_ikb,
+    custom_age_ikb,
+    hosting_filter_ikb,
+    role_filter_ikb,
+)
 from app.routers import common_router, dating_router
 from app.states.default import Search
 from app.text import message_text as mt
-from loader import _
 from database.models import UserModel
-from database.services import User
+from database.services import Profile, User
 from database.services.search import search_profiles
-from app.business.profile_service import send_profile_with_dist
-from database.services import Profile
+from loader import _
+
+
+_browse_filter_locks: dict[int, asyncio.Lock] = {}
+
+
+def _serialize_browse_filter_callbacks(handler):
+    @wraps(handler)
+    async def wrapped(callback: types.CallbackQuery, *args, **kwargs):
+        lock = _browse_filter_locks.setdefault(
+            callback.from_user.id, asyncio.Lock()
+        )
+        async with lock:
+            return await handler(callback, *args, **kwargs)
+
+    return wrapped
 
 
 class ModeConfirmationFilter(Filter):
@@ -147,14 +168,16 @@ async def activate_mode(
 
 async def show_mode_menu(message: types.Message, mode: str) -> None:
     """Show mode-specific menu"""
+    await answer_inline_message(message, mode_menu_text(mode), mode_menu_ikb())
+
+
+def mode_menu_text(mode: str | None) -> str:
     mode_menus = {
         "fun": mt.MODE_FUN_MENU,
         "dates": mt.MODE_DATES_MENU,
         "friends": mt.MODE_FRIENDS_MENU,
     }
-    
-    menu_text = mode_menus.get(mode, "Select an option:")
-    await answer_inline_message(message, menu_text, mode_menu_ikb())
+    return mode_menus.get(mode, mt.NO_MODE_SELECTED)
 
 
 @dating_router.callback_query(ModeMenuCallback.filter())
@@ -174,7 +197,9 @@ async def mode_menu_callback(
         await state.clear()
         await callback.message.edit_text(mt.SELECT_MODE, reply_markup=mode_selection_ikb())
     elif callback_data.action in {"browse", "hosting"}:
-        await _start_browse_filter(callback.message, state, user, session)
+        await _start_browse_filter(
+            callback.message, state, user, session, edit_in_place=True
+        )
     elif callback_data.action == "likes":
         from app.handlers.dating.inbox import show_match_archive
 
@@ -221,18 +246,154 @@ async def _start_browse_filter(
     state: FSMContext,
     user: UserModel,
     session: AsyncSession,
+    edit_in_place: bool = False,
 ) -> None:
     current_mode = await User.get_mode(session, user.id)
     
     if not current_mode:
-        await message.answer(mt.NO_MODE_SELECTED)
+        if edit_in_place:
+            await message.edit_text(mt.NO_MODE_SELECTED, reply_markup=mode_selection_ikb())
+        else:
+            await message.answer(mt.NO_MODE_SELECTED)
         return
     
-    from app.keyboards.default.registration_form import RegistrationFormKb
     await state.clear()
     await state.set_state(Search.hosting_filter)
-    await state.update_data(current_mode=current_mode)
-    await message.answer(mt.HOSTING_FILTER, reply_markup=RegistrationFormKb.hosting_filter())
+    await state.update_data(current_mode=current_mode, filter_screen="hosting")
+    if edit_in_place:
+        await message.edit_text(mt.HOSTING_FILTER, reply_markup=hosting_filter_ikb())
+    else:
+        await answer_inline_message(message, mt.HOSTING_FILTER, hosting_filter_ikb())
+
+
+@dating_router.callback_query(BrowseFilterCallback.filter())
+@_serialize_browse_filter_callbacks
+async def browse_filter_callback(
+    callback: types.CallbackQuery,
+    callback_data: BrowseFilterCallback,
+    state: FSMContext,
+    user: UserModel,
+    session: AsyncSession,
+) -> None:
+    data = await state.get_data()
+    current_screen = data.get("filter_screen")
+
+    if callback_data.step == "back":
+        expected_screens = {
+            "mode_menu": {"hosting"},
+            "hosting": {"role"},
+            "role": {"age"},
+            "age": {"custom_min", "custom_max"},
+        }
+        if current_screen not in expected_screens.get(callback_data.value, set()):
+            await callback.answer("This step has expired.")
+            return
+    elif current_screen != callback_data.step:
+        await callback.answer("This step has expired.")
+        return
+
+    await callback.answer()
+
+    if callback_data.step == "back":
+        if callback_data.value == "mode_menu":
+            mode = data.get("current_mode") or await User.get_mode(session, user.id)
+            await state.clear()
+            await callback.message.edit_text(
+                mode_menu_text(mode), reply_markup=mode_menu_ikb()
+            )
+        elif callback_data.value == "hosting":
+            await state.set_state(Search.hosting_filter)
+            await state.update_data(filter_screen="hosting")
+            await callback.message.edit_text(
+                mt.HOSTING_FILTER, reply_markup=hosting_filter_ikb()
+            )
+        elif callback_data.value == "role":
+            await state.set_state(Search.role_filter)
+            await state.update_data(filter_screen="role")
+            await callback.message.edit_text(mt.ROLE_FILTER, reply_markup=role_filter_ikb())
+        elif callback_data.value == "age":
+            await state.set_state(Search.age_filter_min)
+            await state.update_data(filter_screen="age", search_min_age=None)
+            await callback.message.edit_text(
+                mt.AGE_RANGE_SEARCH_PROMPT, reply_markup=age_range_ikb()
+            )
+        return
+
+    if callback_data.step == "hosting":
+        if callback_data.value not in {"yes", "no", "airbnb", "all"}:
+            await callback.message.edit_text(
+                mt.INVALID_OPTION, reply_markup=hosting_filter_ikb()
+            )
+            return
+        await state.set_state(Search.role_filter)
+        await state.update_data(
+            hosting_filter=callback_data.value,
+            role_filter=None,
+            search_min_age=None,
+            filter_screen="role",
+        )
+        await callback.message.edit_text(mt.ROLE_FILTER, reply_markup=role_filter_ikb())
+        return
+
+    if callback_data.step == "role":
+        if callback_data.value not in {"top", "bottom", "verse", "all"}:
+            await callback.message.edit_text(mt.INVALID_OPTION, reply_markup=role_filter_ikb())
+            return
+        await state.set_state(Search.age_filter_min)
+        await state.update_data(
+            role_filter=callback_data.value,
+            search_min_age=None,
+            filter_screen="age",
+        )
+        await callback.message.edit_text(
+            mt.AGE_RANGE_SEARCH_PROMPT, reply_markup=age_range_ikb()
+        )
+        return
+
+    if callback_data.step != "age":
+        await callback.message.edit_text(mt.INVALID_OPTION, reply_markup=age_range_ikb())
+        return
+
+    if callback_data.value == "custom":
+        await state.set_state(Search.age_filter_min)
+        await state.update_data(
+            filter_screen="custom_min",
+            browse_filter_chat_id=callback.message.chat.id,
+            browse_filter_message_id=callback.message.message_id,
+            search_min_age=None,
+        )
+        await callback.message.edit_text(
+            mt.AGE_RANGE_CUSTOM_MIN_PROMPT, reply_markup=custom_age_ikb()
+        )
+        return
+
+    age_ranges = {
+        "18_25": (18, 25),
+        "26_35": (26, 35),
+        "36_45": (36, 45),
+        "46_plus": (46, 99),
+        "default": (None, None),
+    }
+    if callback_data.value not in age_ranges:
+        await callback.message.edit_text(
+            mt.INVALID_OPTION, reply_markup=age_range_ikb()
+        )
+        return
+
+    min_age, max_age = age_ranges[callback_data.value]
+    await start_mode_search(
+        callback.message,
+        state,
+        user,
+        session,
+        data.get("current_mode"),
+        hosting_filter=data.get("hosting_filter", "all"),
+        role_filter=data.get("role_filter", "all"),
+        min_age=min_age,
+        max_age=max_age,
+        browse_filter_chat_id=callback.message.chat.id,
+        browse_filter_message_id=callback.message.message_id,
+    )
 
 
 # Handle hosting filter selection
@@ -256,11 +417,14 @@ async def hosting_filter_handler(
         await message.answer(mt.INVALID_OPTION)
         return
     
-    await state.update_data(hosting_filter=hosting_filter)
+    await state.update_data(
+        hosting_filter=hosting_filter,
+        role_filter=None,
+        search_min_age=None,
+        filter_screen="role",
+    )
     await state.set_state(Search.role_filter)
-    
-    from app.keyboards.default.registration_form import RegistrationFormKb
-    await message.answer(mt.ROLE_FILTER, reply_markup=RegistrationFormKb.role_filter())
+    await answer_inline_message(message, mt.ROLE_FILTER, role_filter_ikb())
 
 
 # Handle role filter selection - now leads to AGE step instead of searching directly
@@ -285,13 +449,9 @@ async def role_filter_handler(
         return
     
     # Save role filter, move to age step
-    await state.update_data(role_filter=role_filter)
+    await state.update_data(role_filter=role_filter, search_min_age=None, filter_screen="age")
     await state.set_state(Search.age_filter_min)
-    
-    await message.answer(
-        mt.AGE_RANGE_SEARCH_PROMPT,
-        reply_markup=age_range_search_kb(),
-    )
+    await answer_inline_message(message, mt.AGE_RANGE_SEARCH_PROMPT, age_range_ikb())
 
 
 # NEW: Handle age step - "use default" skips straight to search
@@ -329,7 +489,17 @@ async def age_filter_min_input(
     
     await state.update_data(search_min_age=min_age)
     await state.set_state(Search.age_filter_max)
-    await message.answer(mt.AGE_RANGE_SEARCH_MAX_PROMPT(min_age))
+    data = await state.get_data()
+    if data.get("filter_screen") == "custom_min":
+        await state.update_data(filter_screen="custom_max")
+        await message.bot.edit_message_text(
+            chat_id=data["browse_filter_chat_id"],
+            message_id=data["browse_filter_message_id"],
+            text=mt.AGE_RANGE_SEARCH_MAX_PROMPT(min_age),
+            reply_markup=custom_age_ikb(),
+        )
+    else:
+        await message.answer(mt.AGE_RANGE_SEARCH_MAX_PROMPT(min_age))
     
 
 
@@ -366,6 +536,8 @@ async def age_filter_max_input(
     await start_mode_search(
         message, state, user, session, current_mode, hosting_filter, role_filter,
         min_age=min_age, max_age=max_age,
+        browse_filter_chat_id=data.get("browse_filter_chat_id"),
+        browse_filter_message_id=data.get("browse_filter_message_id"),
     )
 
 
@@ -384,36 +556,72 @@ async def start_mode_search(
     role_filter: str = 'all',
     min_age: int = None,
     max_age: int = None,
+    browse_filter_chat_id: int | None = None,
+    browse_filter_message_id: int | None = None,
 ) -> None:
     """Start searching in specified mode with hosting, role, and age filters"""
     from app.keyboards.default.base import search_kb
-    
-    await message.answer(mt.SEARCH, reply_markup=search_kb)
-    
+
+    if not mode or not user.profile:
+        await state.clear()
+        text = mt.NO_MODE_SELECTED if not mode else mt.NO_PROFILE_FOR_SEARCH
+        if browse_filter_chat_id and browse_filter_message_id:
+            await message.bot.edit_message_text(
+                chat_id=browse_filter_chat_id,
+                message_id=browse_filter_message_id,
+                text=text,
+                reply_markup=mode_menu_ikb(),
+            )
+        else:
+            await answer_inline_message(message, text, mode_menu_ikb())
+        return
+
     original_find_role = user.profile.find_role
     user.profile.find_role = role_filter
-    
-    if profile_list := await search_profiles(
-        session, 
-        user.profile, 
-        user_mode=mode, 
-        hosting_filter=hosting_filter,
-        min_age=min_age,
-        max_age=max_age,
-    ):
+
+    try:
+        profile_list = await search_profiles(
+            session,
+            user.profile,
+            user_mode=mode,
+            hosting_filter=hosting_filter,
+            min_age=min_age,
+            max_age=max_age,
+        )
+    finally:
+        user.profile.find_role = original_find_role
+
+    if profile_list:
+        if browse_filter_chat_id and browse_filter_message_id:
+            await message.bot.edit_message_reply_markup(
+                chat_id=browse_filter_chat_id,
+                message_id=browse_filter_message_id,
+                reply_markup=None,
+            )
+        await message.answer(mt.SEARCH, reply_markup=search_kb)
         await state.set_state(Search.search)
         await state.update_data(
-            ids=profile_list, 
+            ids=profile_list,
             current_mode=mode,
             hosting_filter=hosting_filter,
             role_filter=role_filter,
             min_age=min_age,
             max_age=max_age,
+            filter_screen="search",
         )
-        
+
         first_profile = await Profile.get(session, profile_list[0])
         await send_profile_with_dist(user=user, profile=first_profile, session=session)
     else:
-        await answer_inline_message(message, mt.EMPTY_PROFILE_SEARCH(mode), mode_menu_ikb())
-    
-    user.profile.find_role = original_find_role
+        await state.clear()
+        if browse_filter_chat_id and browse_filter_message_id:
+            await message.bot.edit_message_text(
+                chat_id=browse_filter_chat_id,
+                message_id=browse_filter_message_id,
+                text=mt.EMPTY_PROFILE_SEARCH(mode),
+                reply_markup=mode_menu_ikb(),
+            )
+        else:
+            await answer_inline_message(
+                message, mt.EMPTY_PROFILE_SEARCH(mode), mode_menu_ikb()
+            )
