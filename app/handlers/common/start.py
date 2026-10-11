@@ -4,7 +4,9 @@ from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
 
 from app.business.menu_service import menu
+from app.filters.kb_filter import MainMenuCallback
 from app.keyboards.default.registration_form import create_profile_kb
+from app.keyboards.inline.menus import main_menu_ikb
 from app.routers import common_router
 from app.text import message_text as mt
 from data.config import LOGO_DIR
@@ -33,3 +35,12 @@ async def start_command(message: types.Message, user: UserModel, state: FSMConte
             caption=mt.WELCOME,
             reply_markup=create_profile_kb(),
         )
+
+
+@common_router.callback_query(MainMenuCallback.filter(F.action == "menu"))
+async def return_to_main_menu(
+    callback: types.CallbackQuery, state: FSMContext
+) -> None:
+    await callback.answer()
+    await state.clear()
+    await callback.message.edit_text(mt.MENU, reply_markup=main_menu_ikb())

@@ -5,7 +5,15 @@ from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.keyboards.default.base import mode_confirm_kb, mode_menu_kb, age_range_search_kb
+from app.business.menu_service import answer_inline_message
+from app.filters.kb_filter import ModeMenuCallback
+from app.keyboards.default.base import age_range_search_kb
+from app.keyboards.inline.menus import (
+    main_menu_ikb,
+    mode_confirm_ikb,
+    mode_menu_ikb,
+    mode_selection_ikb,
+)
 from app.routers import common_router, dating_router
 from app.states.default import Search
 from app.text import message_text as mt
@@ -87,7 +95,7 @@ async def handle_mode_switch(
     
     await state.update_data(pending_mode=new_mode)
     confirm_text = mt.MODE_SWITCH_CONFIRM(current_mode, new_mode)
-    await message.answer(confirm_text, reply_markup=mode_confirm_kb())
+    await answer_inline_message(message, confirm_text, mode_confirm_ikb())
 
 
 @dating_router.message(ModeConfirmationFilter())
@@ -108,7 +116,7 @@ async def mode_switch_confirmation(
     if switch:
         await activate_mode(message, state, user, session, pending_mode)
     else:
-        await message.answer(mt.MODE_SWITCH_CANCELLED, reply_markup=mode_menu_kb())
+        await answer_inline_message(message, mt.MODE_SWITCH_CANCELLED, mode_menu_ikb())
     
     await state.update_data(pending_mode=None)
 
@@ -146,7 +154,43 @@ async def show_mode_menu(message: types.Message, mode: str) -> None:
     }
     
     menu_text = mode_menus.get(mode, "Select an option:")
-    await message.answer(menu_text, reply_markup=mode_menu_kb())
+    await answer_inline_message(message, menu_text, mode_menu_ikb())
+
+
+@dating_router.callback_query(ModeMenuCallback.filter())
+async def mode_menu_callback(
+    callback: types.CallbackQuery,
+    callback_data: ModeMenuCallback,
+    state: FSMContext,
+    user: UserModel,
+    session: AsyncSession,
+) -> None:
+    await callback.answer()
+
+    if callback_data.action == "menu":
+        await state.clear()
+        await callback.message.edit_text(mt.MENU, reply_markup=main_menu_ikb())
+    elif callback_data.action == "back":
+        await state.clear()
+        await callback.message.edit_text(mt.SELECT_MODE, reply_markup=mode_selection_ikb())
+    elif callback_data.action in {"browse", "hosting"}:
+        await _start_browse_filter(callback.message, state, user, session)
+    elif callback_data.action == "likes":
+        from app.handlers.dating.inbox import show_match_archive
+
+        await show_match_archive(
+            callback.message,
+            state,
+            user,
+            session,
+            username=callback.from_user.username,
+        )
+    elif callback_data.action == "age":
+        from app.handlers.dating.age_filter import start_age_filter
+
+        await start_age_filter(callback.message, state)
+    else:
+        await callback.message.edit_text(mt.INVALID_OPTION, reply_markup=mode_menu_ikb())
 
 
 # Handle Browse Profiles button from mode menu
@@ -158,6 +202,26 @@ async def browse_profiles_handler(
     session: AsyncSession,
 ) -> None:
     """Handle Browse Profiles button - show hosting filter first"""
+    await _start_browse_filter(message, state, user, session)
+
+
+@dating_router.message(F.text == "🏠")
+async def hosting_filter_start_legacy(
+    message: types.Message,
+    state: FSMContext,
+    user: UserModel,
+    session: AsyncSession,
+) -> None:
+    """Keep the old hosting button working during the inline menu rollout."""
+    await _start_browse_filter(message, state, user, session)
+
+
+async def _start_browse_filter(
+    message: types.Message,
+    state: FSMContext,
+    user: UserModel,
+    session: AsyncSession,
+) -> None:
     current_mode = await User.get_mode(session, user.id)
     
     if not current_mode:
@@ -165,6 +229,7 @@ async def browse_profiles_handler(
         return
     
     from app.keyboards.default.registration_form import RegistrationFormKb
+    await state.clear()
     await state.set_state(Search.hosting_filter)
     await state.update_data(current_mode=current_mode)
     await message.answer(mt.HOSTING_FILTER, reply_markup=RegistrationFormKb.hosting_filter())
@@ -349,6 +414,6 @@ async def start_mode_search(
         first_profile = await Profile.get(session, profile_list[0])
         await send_profile_with_dist(user=user, profile=first_profile, session=session)
     else:
-        await message.answer(mt.EMPTY_PROFILE_SEARCH(mode), reply_markup=mode_menu_kb())
+        await answer_inline_message(message, mt.EMPTY_PROFILE_SEARCH(mode), mode_menu_ikb())
     
     user.profile.find_role = original_find_role

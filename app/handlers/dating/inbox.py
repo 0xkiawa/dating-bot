@@ -8,10 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.business.dating_service import send_user_like_alert
 from app.business.profile_service import complaint_to_profile, send_profile_with_dist
+from app.business.menu_service import answer_inline_message
 from app.constans import EFFECTS_DICTIONARY
 from app.handlers.common.start import start_command
-from app.keyboards.default.base import match_kb, mode_menu_kb
+from app.keyboards.default.base import match_kb
 from app.keyboards.default.compleint import compleint_kb
+from app.keyboards.inline.menus import mode_menu_ikb
 from app.routers import dating_router
 from app.states.default import LikeResponse
 from app.text import message_text as mt
@@ -73,11 +75,28 @@ async def match_archive(
     message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession
 ) -> None:
     """Архив лайков анкеты пользовтеля - FILTERED BY CURRENT MODE"""
+    await show_match_archive(
+        message,
+        state,
+        user,
+        session,
+        username=message.from_user.username,
+    )
+
+
+async def show_match_archive(
+    message: types.Message,
+    state: FSMContext,
+    user: UserModel,
+    session: AsyncSession,
+    username: str | None,
+) -> None:
+    await state.clear()
     await state.set_state(LikeResponse.response)
     await User.update(
         session,
         id=user.id,
-        username=message.from_user.username,
+        username=username,
     )  # needs to be redone
 
     # Get current mode
@@ -91,7 +110,7 @@ async def match_archive(
     await _send_mutual_like_notifications(session, user)
 
     # Get matches filtered by current mode
-    if liker_ids := await Match.get_user_matchs_by_mode(session, message.from_user.id, current_mode):
+    if liker_ids := await Match.get_user_matchs_by_mode(session, user.id, current_mode):
         text = mt.ARCHIVE_SEARCH.format(len(liker_ids))
         await message.answer(text=text, reply_markup=match_kb)
 
@@ -103,7 +122,7 @@ async def match_archive(
             await message.answer(mt.MESSAGE_TO_YOU.format(match_data.message))
     else:
         # Show mode-specific empty message
-        await message.answer(mt.LIKE_ARCHIVE(current_mode), reply_markup=mode_menu_kb())
+        await answer_inline_message(message, mt.LIKE_ARCHIVE(current_mode), mode_menu_ikb())
 
 
 @dating_router.callback_query(StateFilter("*"), F.data == "archive")
@@ -140,7 +159,11 @@ async def _match_atchive_callback(
             await callback.message.answer(mt.MESSAGE_TO_YOU.format(match_data.message))
     else:
         # Show mode-specific empty message
-        await callback.message.answer(mt.LIKE_ARCHIVE(current_mode), reply_markup=mode_menu_kb())
+        await answer_inline_message(
+            callback.message,
+            mt.LIKE_ARCHIVE(current_mode),
+            mode_menu_ikb(),
+        )
 
 
 @dating_router.message(
@@ -190,7 +213,11 @@ async def _match_response(
             await message.answer(mt.MESSAGE_TO_YOU.format(match_data.message))
     else:
         # Show mode-specific empty message and return to mode menu
-        await message.answer(mt.EMPTY_PROFILE_SEARCH(current_mode), reply_markup=mode_menu_kb())
+        await answer_inline_message(
+            message,
+            mt.EMPTY_PROFILE_SEARCH(current_mode),
+            mode_menu_ikb(),
+        )
 
 
 def generate_user_link(id: int, username: str = None, sender_profile=None, mode: str = None) -> str:

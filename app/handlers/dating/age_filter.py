@@ -6,7 +6,9 @@ from aiogram import F, types
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.keyboards.default.base import age_filter_kb, mode_menu_kb
+from app.business.menu_service import answer_inline_message
+from app.keyboards.default.base import age_filter_kb
+from app.keyboards.inline.menus import mode_menu_ikb
 from app.routers import dating_router
 from app.states.default import AgeFilter
 from app.text import message_text as mt
@@ -21,12 +23,16 @@ async def age_filter_start(
     session: AsyncSession
 ) -> None:
     """Start age filter setup - ask for minimum age"""
+    await start_age_filter(message, state)
+
+
+async def start_age_filter(message: types.Message, state: FSMContext) -> None:
+    previous_data = await state.get_data()
+    min_age = previous_data.get("min_age", 18)
+    max_age = previous_data.get("max_age", 99)
+    await state.clear()
+    await state.update_data(min_age=min_age, max_age=max_age)
     await state.set_state(AgeFilter.min_age)
-    
-    # Get current age filter if exists
-    data = await state.get_data()
-    min_age = data.get("min_age", 18)
-    max_age = data.get("max_age", 99)
     
     await message.answer(
         mt.AGE_FILTER_START(min_age=min_age, max_age=max_age),
@@ -104,9 +110,10 @@ async def age_filter_max_set(
         hosting_filter=hosting_filter
     )
     
-    await message.answer(
+    await answer_inline_message(
+        message,
         mt.AGE_FILTER_SET(min_age=min_age, max_age=max_age),
-        reply_markup=mode_menu_kb()
+        mode_menu_ikb(),
     )
 
 
@@ -134,10 +141,7 @@ async def age_filter_cancel(
         hosting_filter=hosting_filter
     )
     
-    await message.answer(
-        mt.AGE_FILTER_CANCELLED,
-        reply_markup=mode_menu_kb()
-    )
+    await answer_inline_message(message, mt.AGE_FILTER_CANCELLED, mode_menu_ikb())
 
 
 @dating_router.message(AgeFilter.min_age)

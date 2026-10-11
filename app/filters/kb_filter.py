@@ -21,3 +21,19 @@ class PhotoRevealCallback(CallbackData, prefix="reveal"):
 class CarouselNavCallback(CallbackData, prefix="carnav"):
     profile_id: int
     index: int
+
+
+class MainMenuCallback(CallbackData, prefix="mainmenu"):
+    action: str
+
+
+class ModeSelectionCallback(CallbackData, prefix="modeselect"):
+    mode: str
+
+
+class ModeMenuCallback(CallbackData, prefix="modemenu"):
+    action: str
+
+
+class ModeConfirmCallback(CallbackData, prefix="modeconfirm"):
+    switch: bool

@@ -5,10 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.filters.create_profile_filtres as filters
 from app.business.dating_service import send_user_like_alert
-from app.business.menu_service import menu
+from app.business.menu_service import answer_inline_message, menu
 from app.business.profile_service import complaint_to_profile, send_profile_with_dist
 from app.handlers.common.start import start_command
-from app.keyboards.default.base import return_to_menu_kb, search_kb, mode_menu_kb
+from app.keyboards.default.base import return_to_menu_kb, search_kb
+from app.keyboards.inline.menus import mode_menu_ikb
 from app.keyboards.default.compleint import compleint_kb
 from app.routers import dating_router
 from app.states.default import Search
@@ -136,7 +137,11 @@ async def next_profile(
         
         # Clear state and show mode-specific empty message
         await state.clear()
-        await message.answer(mt.EMPTY_PROFILE_SEARCH(current_mode), reply_markup=mode_menu_kb())
+        await answer_inline_message(
+            message,
+            mt.EMPTY_PROFILE_SEARCH(current_mode),
+            mode_menu_ikb(),
+        )
 
 
 async def like_profile(
