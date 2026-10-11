@@ -19,6 +19,21 @@ def main_menu_ikb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def welcome_menu_ikb() -> InlineKeyboardMarkup:
+    """Inline actions shown to users who have not created a profile yet."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=f"👤 {_('Create a profile')}",
+        callback_data=MainMenuCallback(action="create_profile"),
+    )
+    builder.button(
+        text=f"🎭 {_('Enter Mode')}",
+        callback_data=MainMenuCallback(action="welcome_modes"),
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
 def main_menu_back_ikb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="⬅️ Back", callback_data=MainMenuCallback(action="menu"))

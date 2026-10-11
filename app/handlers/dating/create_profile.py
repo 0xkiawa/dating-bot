@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.filters.create_profile_filtres as filters
 from loader import _
 from app.business.menu_service import menu
+from app.filters.kb_filter import MainMenuCallback
 from app.keyboards.default.registration_form import RegistrationFormKb
 from app.routers import dating_router
 from app.states.default import ProfileCreate
@@ -16,6 +17,21 @@ from database.services.profile_media import ProfileMedia
 from database.services.user import User
 
 from .profile import profile_command
+
+
+@dating_router.callback_query(MainMenuCallback.filter(F.action == "create_profile"))
+async def create_profile_callback(
+    callback: types.CallbackQuery, state: FSMContext, user: UserModel
+) -> None:
+    """Start profile creation from the inline welcome keyboard."""
+    await callback.answer()
+    await state.clear()
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await state.set_state(ProfileCreate.name)
+    await callback.message.answer(
+        text=mt.NAME,
+        reply_markup=RegistrationFormKb.name(user),
+    )
 
 
 @dating_router.message(StateFilter(None), F.text == "🔄")
