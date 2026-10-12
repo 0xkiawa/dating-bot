@@ -218,6 +218,7 @@ async def _schedule_reblur_carousel(
     delay_seconds: int,
     state=None,
     profile_id: int | None = None,
+    search_card: bool = False,
 ):
     """
     After `delay_seconds`, DELETES the revealed message entirely and sends a fresh
@@ -253,15 +254,21 @@ async def _schedule_reblur_carousel(
         except Exception as e:
             logger.log("PHOTO_REVEAL", f"Could not delete revealed message: {e}")
 
+        # Search cards are one-shot. If the viewer has already passed this card
+        # or exhausted the search, remove the revealed message without posting
+        # the old profile again as a buttonless carousel.
+        if search_card and not keep_actions:
+            return
+
         try:
             sent = await bot.send_photo(
                 chat_id=chat_id,
                 photo=blurred_file_id,
                 caption=caption_with_dots + "\n🔒 Already revealed",
-                reply_markup=nav_markup if keep_actions else nav_only_markup,
+                reply_markup=nav_markup if search_card else nav_only_markup,
                 protect_content=True,
             )
-            if keep_actions and state is not None:
+            if search_card and state is not None:
                 latest = await state.get_data()
                 latest_ids = latest.get("ids") or []
                 latest_state = await state.get_state()
@@ -275,7 +282,11 @@ async def _schedule_reblur_carousel(
                         active_card_message_id=sent.message_id,
                     )
                 else:
-                    await sent.edit_reply_markup(reply_markup=nav_only_markup)
+                    # The search may have advanced while Telegram was sending.
+                    # Do not leave a stale replacement card in the conversation.
+                    await bot.delete_message(
+                        chat_id=sent.chat.id, message_id=sent.message_id
+                    )
         except Exception as e:
             logger.log("PHOTO_REVEAL", f"Could not send fresh blurred photo: {e}")
 

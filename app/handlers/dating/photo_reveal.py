@@ -114,4 +114,5 @@ async def reveal_photo_handler(
         delay_seconds=duration,
         state=state,
         profile_id=profile.id,
+        search_card=search_active,
     )
