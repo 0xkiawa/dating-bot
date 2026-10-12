@@ -1,5 +1,6 @@
 from io import BytesIO
 
+from aiogram import types
 from aiogram.types import BufferedInputFile, InlineKeyboardButton, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from PIL import Image, ImageFilter
