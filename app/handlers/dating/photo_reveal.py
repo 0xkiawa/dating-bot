@@ -77,12 +77,28 @@ async def reveal_photo_handler(
         caption_text=caption_text,
         include_actions=search_active,
     )
+    nav_only_markup = nav_markup
+    if search_active:
+        _, _, nav_only_markup = await build_carousel_page(
+            session=session,
+            profile_id=profile.id,
+            media_items=media_items,
+            index=index,
+            viewer_id=viewer_id,
+            caption_text=caption_text,
+            include_actions=False,
+        )
 
     # Show the REAL clear photo right now
     await callback.message.edit_media(
         media=InputMediaPhoto(media=media_obj.media, caption=f"{caption_text}{dots}"),
         reply_markup=nav_markup,
     )
+    if search_active:
+        await state.update_data(
+            active_card_chat_id=callback.message.chat.id,
+            active_card_message_id=callback.message.message_id,
+        )
     await callback.answer("👁 Revealed! This will blur again shortly.")
 
     # Schedule automatic re-blur after the owner's chosen duration
@@ -94,5 +110,8 @@ async def reveal_photo_handler(
         blurred_file_id=blurred_id,
         caption_with_dots=f"{caption_text}{dots}",
         nav_markup=nav_markup,
+        nav_only_markup=nav_only_markup,
         delay_seconds=duration,
+        state=state,
+        profile_id=profile.id,
     )

@@ -2,7 +2,7 @@ import math
 import random
 from datetime import datetime, timedelta
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, case, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data.config import search
@@ -170,8 +170,13 @@ async def search_profiles(
     block_size = block_size or search.BLOCK_SIZE
 
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    recent_swipes = select(MatchModel.receiver_id).where(
-        MatchModel.sender_id == profile.id,
+    recent_interactions = select(
+        case(
+            (MatchModel.sender_id == profile.id, MatchModel.receiver_id),
+            else_=MatchModel.sender_id,
+        )
+    ).where(
+        or_(MatchModel.sender_id == profile.id, MatchModel.receiver_id == profile.id),
         MatchModel.is_active.is_(True),
         or_(
             MatchModel.status != MatchStatus.Rejected,
@@ -196,7 +201,7 @@ async def search_profiles(
         build_role_matching_conditions(profile.role, profile.find_role),
         or_(ProfileModel.preferred_age_min.is_(None), ProfileModel.preferred_age_min <= profile.age),
         or_(ProfileModel.preferred_age_max.is_(None), ProfileModel.preferred_age_max >= profile.age),
-        ProfileModel.id.not_in(recent_swipes),
+        ProfileModel.id.not_in(recent_interactions),
         ProfileModel.id.not_in(reported_profiles),
     ]
     if user_mode:

@@ -167,10 +167,16 @@ async def match_preference_callback(
             selected.append(value)
         profile.interests = selected
         await session.commit()
-        await callback.answer()
-        await callback.message.edit_reply_markup(
-            reply_markup=interests_preferences_ikb(profile)
-        )
+        if len(selected) == 5:
+            await callback.answer(_("All five interests saved."))
+            await callback.message.edit_text(
+                preferences_text(profile), reply_markup=preferences_ikb(profile)
+            )
+        else:
+            await callback.answer()
+            await callback.message.edit_reply_markup(
+                reply_markup=interests_preferences_ikb(profile)
+            )
         return
 
     await callback.answer(mt.INVALID_OPTION, show_alert=True)

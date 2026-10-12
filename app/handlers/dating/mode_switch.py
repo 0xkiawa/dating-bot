@@ -622,12 +622,16 @@ async def start_mode_search(
         )
 
         first_profile = await Profile.get(session, profile_list[0])
-        await send_profile_with_dist(
+        sent_profile = await send_profile_with_dist(
             user=user,
             profile=first_profile,
             session=session,
             include_actions=True,
             mode=mode,
+        )
+        await state.update_data(
+            active_card_chat_id=sent_profile.chat.id,
+            active_card_message_id=sent_profile.message_id,
         )
     else:
         await state.clear()

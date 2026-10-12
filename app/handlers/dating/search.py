@@ -52,6 +52,7 @@ async def _search_profile(
         )
         return
     await state.set_state(Search.search)
+    await state.update_data(message_prompt_message_id=None)
     another_user = await User.get_with_profile(session, profile_list[0])
     if (
         not another_user
@@ -141,6 +142,7 @@ async def _search_profile_mailing_(
         )
         return
     await state.set_state(Search.search)
+    await state.update_data(message_prompt_message_id=None)
     another_user = await User.get_with_profile(session, profile_list[0])
     if (
         not another_user
@@ -152,15 +154,6 @@ async def _search_profile_mailing_(
         return
     if message.text == "↩️":
         await message.answer(mt.CANNCELED_LETTER, reply_markup=ReplyKeyboardRemove())
-        data = await state.get_data()
-        await send_profile_with_dist(
-            user=user,
-            profile=another_user.profile,
-            session=session,
-            include_actions=True,
-            mode=data.get("current_mode"),
-        )
-
         return
     await like_profile(
         session=session,
@@ -189,18 +182,47 @@ async def next_profile(
     Move to next profile in search results.
     Returns to mode menu when search ends, with mode-specific message.
     """
+    data = await state.get_data()
+    active_chat_id = data.get("active_card_chat_id", message.chat.id)
+    active_message_id = data.get("active_card_message_id")
+    if active_message_id:
+        try:
+            await message.bot.edit_message_reply_markup(
+                chat_id=active_chat_id,
+                message_id=active_message_id,
+                reply_markup=None,
+            )
+        except Exception:
+            # The card may already have been edited or removed; advancing still works.
+            pass
+    else:
+        try:
+            await message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+
     if profile_list:
         profile_list.pop(0)
-    if profile_list:
-        data = await state.get_data()
-        profile = await Profile.get(session, profile_list[0])
+    profile = None
+    while profile_list:
+        candidate = await Profile.get(session, profile_list[0])
+        if candidate and candidate.is_active and candidate.age >= 18:
+            profile = candidate
+            break
+        profile_list.pop(0)
+
+    if profile:
         await state.update_data(ids=profile_list)
-        await send_profile_with_dist(
+        sent_profile = await send_profile_with_dist(
             user=user,
             profile=profile,
             session=session,
             include_actions=True,
             mode=data.get("current_mode"),
+        )
+        await state.update_data(
+            active_card_chat_id=sent_profile.chat.id,
+            active_card_message_id=sent_profile.message_id,
         )
     else:
         # Get current mode from state
@@ -265,20 +287,48 @@ async def profile_action_callback(
         profile_ids = data.get("ids", [])
         current_state = await state.get_state()
         allowed_states = {Search.search.state}
-        if callback_data.action == "message_cancel":
+        if current_state == Search.message.state:
+            # Let the user change their mind from the still-visible profile card.
             allowed_states.add(Search.message.state)
         if (
             current_state not in allowed_states
             or not profile_ids
             or profile_ids[0] != callback_data.profile_id
         ):
-            await callback.answer(_("This profile is no longer active."), show_alert=True)
+            await callback.answer(_("This card has already been handled."))
+            try:
+                await callback.message.edit_reply_markup(reply_markup=None)
+            except Exception:
+                pass
             return
 
         action = callback_data.action
+        if current_state == Search.message.state and action == "message":
+            await callback.answer(_("Send your message or cancel it first."))
+            return
+        if current_state == Search.message.state and action in {"like", "pass", "report"}:
+            prompt_id = data.get("message_prompt_message_id")
+            if prompt_id:
+                try:
+                    await callback.message.bot.edit_message_text(
+                        chat_id=callback.message.chat.id,
+                        message_id=prompt_id,
+                        text=mt.CANNCELED_LETTER,
+                        reply_markup=None,
+                    )
+                except Exception:
+                    pass
+            await state.set_state(Search.search)
+            await state.update_data(message_prompt_message_id=None)
+
+        if action in {"like", "pass", "message", "report"}:
+            await state.update_data(
+                active_card_chat_id=callback.message.chat.id,
+                active_card_message_id=callback.message.message_id,
+            )
         target = await User.get_with_profile(session, callback_data.profile_id)
         if not target or not target.profile or not target.profile.is_active or target.profile.age < 18:
-            await callback.answer(_("Profile is no longer available."))
+            await callback.answer(_("Skipping an unavailable profile."))
             await next_profile(session, callback.message, profile_ids, user, state)
             return
 
@@ -298,16 +348,22 @@ async def profile_action_callback(
             return
         if action == "message":
             await state.set_state(Search.message)
-            await state.update_data(message_prompt_profile_id=callback_data.profile_id)
-            await callback.answer()
-            await callback.message.answer(
+            prompt = await callback.message.answer(
                 mt.MAILING_TO_USER,
                 reply_markup=message_cancel_ikb(callback_data.profile_id),
             )
+            await state.update_data(
+                message_prompt_profile_id=callback_data.profile_id,
+                message_prompt_message_id=prompt.message_id,
+            )
+            await callback.answer()
             return
         if action == "message_cancel":
             await state.set_state(Search.search)
-            await state.update_data(message_prompt_profile_id=None)
+            await state.update_data(
+                message_prompt_profile_id=None,
+                message_prompt_message_id=None,
+            )
             await callback.answer(_("Message cancelled"))
             try:
                 await callback.message.edit_text(mt.CANNCELED_LETTER, reply_markup=None)

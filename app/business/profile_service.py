@@ -213,7 +213,10 @@ async def _schedule_reblur_carousel(
     blurred_file_id: str,
     caption_with_dots: str,
     nav_markup,
+    nav_only_markup,
     delay_seconds: int,
+    state=None,
+    profile_id: int | None = None,
 ):
     """
     After `delay_seconds`, DELETES the revealed message entirely and sends a fresh
@@ -230,19 +233,48 @@ async def _schedule_reblur_carousel(
 
     async def _reblur():
         await asyncio.sleep(max(delay_seconds, 2))  # minimum 2s so "instant" is still visible at all
+        keep_actions = False
+        if state is not None and profile_id is not None:
+            try:
+                from app.states.default import Search
+
+                current_state = await state.get_state()
+                state_data = await state.get_data()
+                keep_actions = (
+                    current_state in {Search.search.state, Search.message.state}
+                    and state_data.get("ids", [None])[0] == profile_id
+                )
+            except Exception:
+                keep_actions = False
+
         try:
             await bot.delete_message(chat_id=chat_id, message_id=message_id)
         except Exception as e:
             logger.log("PHOTO_REVEAL", f"Could not delete revealed message: {e}")
 
         try:
-            await bot.send_photo(
+            sent = await bot.send_photo(
                 chat_id=chat_id,
                 photo=blurred_file_id,
                 caption=caption_with_dots + "\n🔒 Already revealed",
-                reply_markup=nav_markup,
+                reply_markup=nav_markup if keep_actions else nav_only_markup,
                 protect_content=True,
             )
+            if keep_actions and state is not None:
+                latest = await state.get_data()
+                latest_ids = latest.get("ids") or []
+                latest_state = await state.get_state()
+                if (
+                    latest_state in {Search.search.state, Search.message.state}
+                    and latest_ids
+                    and latest_ids[0] == profile_id
+                ):
+                    await state.update_data(
+                        active_card_chat_id=sent.chat.id,
+                        active_card_message_id=sent.message_id,
+                    )
+                else:
+                    await sent.edit_reply_markup(reply_markup=nav_only_markup)
         except Exception as e:
             logger.log("PHOTO_REVEAL", f"Could not send fresh blurred photo: {e}")
 
@@ -257,7 +289,7 @@ async def send_profile_with_dist(
     session: AsyncSession,
     include_actions: bool = False,
     mode: str | None = None,
-) -> None:
+) -> types.Message:
     """Отправляет профиль пользователя с расстоянием, как карусель фото (◀️▶️ + точки + reveal)"""
     media_items = await ProfileMedia.get_profile_photos(session=session, profile_id=profile.id)
 
@@ -272,8 +304,7 @@ async def send_profile_with_dist(
     markup = profile_actions_ikb(profile.id) if include_actions else None
 
     if not media_items:
-        await bot.send_message(chat_id=user.id, text=text, reply_markup=markup)
-        return
+        return await bot.send_message(chat_id=user.id, text=text, reply_markup=markup)
 
     photo_id, caption, markup = await build_carousel_page(
         session=session,
@@ -284,7 +315,13 @@ async def send_profile_with_dist(
         caption_text=text,
         include_actions=include_actions,
     )
-    await bot.send_photo(chat_id=user.id, photo=photo_id, caption=caption, reply_markup=markup, protect_content=True)
+    return await bot.send_photo(
+        chat_id=user.id,
+        photo=photo_id,
+        caption=caption,
+        reply_markup=markup,
+        protect_content=True,
+    )
 
 
 async def complaint_to_profile(
