@@ -6,6 +6,7 @@ from aiogram.types import CallbackQuery, Message
 from app.business.alert_service import new_user_alert_to_group
 from app.locales import normalize_locale
 from app.constans import REFERAL_SOURCES
+from app.consent import require_consent
 from database.models.user import UserStatus
 from database.services import User
 from database.services.profile import Profile
@@ -20,12 +21,16 @@ class CommonMiddleware(BaseMiddleware):
     ) -> Any:
         session = data["session"]
 
-        user, is_create = await User.get_or_create(
-            session=session,
-            id=message.from_user.id,
-            username=message.from_user.username,
-            language=normalize_locale(message.from_user.language_code),
-        )
+        user = data.get("user")
+        if user is None:
+            user, is_create = await User.get_or_create(
+                session=session,
+                id=message.from_user.id,
+                username=message.from_user.username,
+                language=normalize_locale(message.from_user.language_code),
+            )
+        else:
+            is_create = False
 
         if user.status == UserStatus.Banned:
             return
@@ -64,4 +69,6 @@ class CommonMiddleware(BaseMiddleware):
                 )
 
         data["user"] = user
+        if not data.get("consent_gate_checked") and not await require_consent(message, user):
+            return
         return await handler(message, data)

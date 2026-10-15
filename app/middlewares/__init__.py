@@ -1,5 +1,6 @@
 from aiogram import Dispatcher
 
+from app.consent import ConsentCheckMiddleware, ExistingConsentUpdateMiddleware
 from app.middlewares.i18n import i18n_middleware
 from app.routers import admin_router, common_router, dating_router, voide_router
 from database.connect import async_session
@@ -14,6 +15,7 @@ from .voide import VoideMiddleware
 
 def setup_middlewares(dp: Dispatcher) -> None:
     dp.update.middleware(DatabaseMiddleware(async_session))
+    dp.update.middleware(ExistingConsentUpdateMiddleware())
 
     common_router.message.middleware(LoggingMiddleware())
     common_router.callback_query.middleware(LoggingMiddleware())
@@ -32,6 +34,7 @@ def setup_middlewares(dp: Dispatcher) -> None:
     admin_router.message.middleware(LoggingMiddleware())
     admin_router.callback_query.middleware(LoggingMiddleware())
     admin_router.message.middleware(AdminMiddleware())
+    admin_router.callback_query.middleware(ConsentCheckMiddleware())
     admin_router.message.middleware(i18n_middleware)
 
     voide_router.message.middleware(LoggingMiddleware())

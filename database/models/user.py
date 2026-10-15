@@ -1,4 +1,6 @@
-from sqlalchemy import BigInteger, Integer, String
+from datetime import datetime
+
+from sqlalchemy import BigInteger, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import BaseModel, StatusMixin
@@ -21,6 +23,10 @@ class UserModel(BaseModel):
     language: Mapped[str] = mapped_column(String(10), server_default="en")
     status: Mapped[int] = mapped_column(Integer, server_default="1")
     current_mode: Mapped[str] = mapped_column(String(20), nullable=True)
+    consent_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    consented_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     profile: Mapped["ProfileModel"] = relationship(  # type: ignore
         "ProfileModel", uselist=False, back_populates="user"
