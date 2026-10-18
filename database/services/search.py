@@ -90,6 +90,15 @@ def get_match_reasons(
     if shared:
         reasons.append(_("You both like similar things"))
 
+    viewer_wants_candidate = candidate.body_type in (viewer.preferred_body_types or [])
+    candidate_wants_viewer = viewer.body_type in (candidate.preferred_body_types or [])
+    if viewer_wants_candidate and candidate_wants_viewer:
+        reasons.append(_("You fit each other’s body type preferences"))
+    elif viewer_wants_candidate:
+        reasons.append(_("Fits your body type preferences"))
+    elif candidate_wants_viewer:
+        reasons.append(_("You fit their body type preferences"))
+
     if mode == "dates":
         viewer_intent = viewer.dating_intent or "open"
         candidate_intent = candidate.dating_intent or "open"
@@ -108,7 +117,11 @@ def get_match_reasons(
 
 def _match_score(viewer: ProfileModel, candidate: ProfileModel, distance_km: int, mode: str | None) -> int:
     shared_interests = set(viewer.interests or []) & set(candidate.interests or [])
-    score = min(len(shared_interests), 3) * 3
+    score = min(len(shared_interests), 5) * 5
+    if candidate.body_type in (viewer.preferred_body_types or []):
+        score += 4
+    if viewer.body_type in (candidate.preferred_body_types or []):
+        score += 3
     if mode == "dates":
         viewer_intent = viewer.dating_intent or "open"
         candidate_intent = candidate.dating_intent or "open"

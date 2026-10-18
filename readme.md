@@ -137,7 +137,7 @@ was not recorded. This migration is intentionally irreversible so it cannot
 delete interaction history.
 
 Set `REDISCOVERY_COOLDOWN_DAYS` to change the same-mode rediscovery cooldown
-(default: `21`).
+(default: `4`).
 
 
 #### Redis

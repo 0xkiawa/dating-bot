@@ -21,3 +21,4 @@
 **/database/migrations/versions/*
 !**/database/migrations/versions/__init__.py
 !**/database/migrations/versions/20261017_mode_aware_matching.py
+!**/database/migrations/versions/20261019_profile_body_preferences.py

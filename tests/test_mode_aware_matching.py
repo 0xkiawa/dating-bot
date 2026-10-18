@@ -11,6 +11,7 @@ os.environ.setdefault("BOT_TOKEN", "123456:test-token")
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from data.config import search
 import database.models  # noqa: F401
 from database.models.base import BaseModel
 from database.models.match import (
@@ -22,7 +23,11 @@ from database.models.match import (
 )
 from database.models.profile import ProfileModel
 from database.models.user import UserModel
-from database.schema import backfill_legacy_pair_matches, ensure_mode_aware_matching_columns
+from database.schema import (
+    backfill_legacy_pair_matches,
+    ensure_mode_aware_matching_columns,
+    ensure_profile_match_columns,
+)
 from database.services.match import Match
 from database.services.search import search_profiles
 from database.services.user import User
@@ -126,16 +131,60 @@ class ModeAwareMatchingTests(unittest.IsolatedAsyncioTestCase):
             blocked_by_cooldown = await Match.reserve_delivery(session, 101, 202, "fun")
             self.assertIsNone(blocked_by_cooldown)
 
-            old = datetime.now(timezone.utc) - timedelta(days=21)
+            recent = datetime.now(timezone.utc) - timedelta(
+                days=search.REDISCOVERY_COOLDOWN_DAYS - 1
+            )
             cursor = await session.scalar(select(DiscoveryDeliveryCursorModel))
-            cursor.latest_delivered_at = old
+            cursor.latest_delivered_at = recent
             events = list((await session.scalars(select(DiscoveryDeliveryEventModel))).all())
+            for event in events:
+                if event.status == "delivered":
+                    event.delivered_at = recent
+            await session.commit()
+            self.assertIsNone(await Match.reserve_delivery(session, 101, 202, "fun"))
+
+            old = datetime.now(timezone.utc) - timedelta(
+                days=search.REDISCOVERY_COOLDOWN_DAYS + 1
+            )
+            cursor = await session.scalar(select(DiscoveryDeliveryCursorModel))
+            events = list((await session.scalars(select(DiscoveryDeliveryEventModel))).all())
+            cursor.latest_delivered_at = old
             for event in events:
                 if event.status == "delivered":
                     event.delivered_at = old
             await session.commit()
             rediscovered = await Match.reserve_delivery(session, 101, 202, "fun")
             self.assertIsNotNone(rediscovered)
+
+    async def test_body_type_and_shared_interests_rank_profiles_first(self):
+        async with self.sessions() as session:
+            session.add(UserModel(id=303, current_mode="fun", status=1))
+            session.add(
+                ProfileModel(
+                    id=303,
+                    name="Compatible User",
+                    role="top",
+                    find_role="all",
+                    city="Nairobi",
+                    latitude=-1.29,
+                    longitude=36.82,
+                    age=30,
+                    is_active=True,
+                    body_type="femme",
+                    preferred_body_types=["muscular"],
+                    interests=["music", "travel"],
+                )
+            )
+            viewer = await session.get(ProfileModel, 101)
+            viewer.body_type = "muscular"
+            viewer.preferred_body_types = ["femme", "muscular"]
+            viewer.interests = ["music", "travel"]
+            await session.commit()
+
+            candidate_ids = await search_profiles(
+                session, viewer, user_mode="fun", force_shuffle=False
+            )
+            self.assertEqual([303, 202], candidate_ids)
 
     async def test_delivery_history_is_directional_and_mode_scoped(self):
         async with self.sessions() as session:
@@ -244,6 +293,30 @@ class ModeAwareMatchingTests(unittest.IsolatedAsyncioTestCase):
 
 
 class LegacyMatchingMigrationTests(unittest.TestCase):
+    def test_body_preferences_are_added_to_existing_profiles(self):
+        engine = create_engine("sqlite:///:memory:")
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "CREATE TABLE profiles (id INTEGER PRIMARY KEY, name TEXT NOT NULL)"
+                )
+            )
+            connection.execute(
+                text("INSERT INTO profiles (id, name) VALUES (101, 'Existing User')")
+            )
+            ensure_profile_match_columns(connection)
+            columns = {
+                column[1]
+                for column in connection.execute(text("PRAGMA table_info(profiles)"))
+            }
+            saved_defaults = connection.execute(
+                text("SELECT body_type, preferred_body_types FROM profiles WHERE id = 101")
+            ).one()
+        engine.dispose()
+        self.assertIn("body_type", columns)
+        self.assertIn("preferred_body_types", columns)
+        self.assertEqual((None, "[]"), saved_defaults)
+
     def test_mode_backfill_and_accepted_match_preservation(self):
         engine = create_engine("sqlite:///:memory:")
         with engine.begin() as connection:

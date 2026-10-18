@@ -49,7 +49,7 @@ class SearchSettings:
     BLOCK_SIZE: float = env.float("BLOCK_SIZE", default=50.0)
     EARTH_RADIUS: int = env.int("EARTH_RADIUS", default=6371)
     MAX_RETRIES: int = env.int("MAX_SEARCH_RETRIES", default=5)
-    REDISCOVERY_COOLDOWN_DAYS: int = env.int("REDISCOVERY_COOLDOWN_DAYS", default=21)
+    REDISCOVERY_COOLDOWN_DAYS: int = env.int("REDISCOVERY_COOLDOWN_DAYS", default=4)
     DELIVERY_RESERVATION_MINUTES: int = env.int("DELIVERY_RESERVATION_MINUTES", default=5)
 
 

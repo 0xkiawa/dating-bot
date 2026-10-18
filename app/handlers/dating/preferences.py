@@ -6,15 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.filters.kb_filter import MainMenuCallback, MatchPreferenceCallback
 from app.keyboards.inline.match_preferences import (
     AGE_RANGES,
+    BODY_TYPES,
     DISTANCES,
     INTENTS,
     INTERESTS,
     age_preferences_ikb,
+    body_type_preferences_ikb,
     distance_preferences_ikb,
     interests_preferences_ikb,
     intent_preferences_ikb,
     preferences_ikb,
     preferences_text,
+    preferred_body_types_ikb,
 )
 from app.keyboards.inline.menus import main_menu_ikb, welcome_menu_ikb
 from app.routers import dating_router
@@ -113,6 +116,20 @@ async def match_preference_callback(
             reply_markup=interests_preferences_ikb(profile),
         )
         return
+    if action == "body_type":
+        await callback.answer()
+        await callback.message.edit_text(
+            _("Choose your body type:"),
+            reply_markup=body_type_preferences_ikb(profile),
+        )
+        return
+    if action == "body_preferences":
+        await callback.answer()
+        await callback.message.edit_text(
+            _("Choose all body types you’re into. Leave them unselected for no preference:"),
+            reply_markup=preferred_body_types_ikb(profile),
+        )
+        return
     if action == "set_age":
         age_range = AGE_RANGES.get(value)
         if age_range is None:
@@ -177,6 +194,35 @@ async def match_preference_callback(
             await callback.message.edit_reply_markup(
                 reply_markup=interests_preferences_ikb(profile)
             )
+        return
+    if action == "set_body_type":
+        valid_body_types = {key for key, _label in BODY_TYPES}
+        if value not in valid_body_types:
+            await callback.answer(_("That body type is unavailable."), show_alert=True)
+            return
+        profile.body_type = value
+        await session.commit()
+        await callback.answer(_("Body type saved."))
+        await callback.message.edit_text(
+            preferences_text(profile), reply_markup=preferences_ikb(profile)
+        )
+        return
+    if action == "toggle_body_preference":
+        valid_body_types = {key for key, _label in BODY_TYPES}
+        if value not in valid_body_types:
+            await callback.answer(_("That body type is unavailable."), show_alert=True)
+            return
+        selected = list(profile.preferred_body_types or [])
+        if value in selected:
+            selected.remove(value)
+        else:
+            selected.append(value)
+        profile.preferred_body_types = selected
+        await session.commit()
+        await callback.answer()
+        await callback.message.edit_reply_markup(
+            reply_markup=preferred_body_types_ikb(profile)
+        )
         return
 
     await callback.answer(mt.INVALID_OPTION, show_alert=True)

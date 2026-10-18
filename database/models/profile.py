@@ -18,6 +18,10 @@ class ProfileModel(BaseModel):
     preferred_age_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
     preferred_age_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     preferred_distance_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    body_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    preferred_body_types: Mapped[list[str]] = mapped_column(
+        JSON, default=list, server_default=text("'[]'"), nullable=False
+    )
     interests: Mapped[list[str]] = mapped_column(
         JSON, default=list, server_default=text("'[]'"), nullable=False
     )
