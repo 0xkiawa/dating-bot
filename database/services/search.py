@@ -1,15 +1,20 @@
 import math
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import and_, case, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data.config import search
 from database.models.complaint import CompleintStatus, ProfileCompleintsModel
-from database.models.match import MatchModel, MatchStatus
+from database.models.match import (
+    DiscoveryDeliveryEventModel,
+    InteractionDecisionModel,
+    MatchModel,
+    PairMatchModel,
+)
 from database.models.profile import ProfileModel
-from database.models.user import UserModel
+from database.models.user import UserBlockModel, UserModel
 from utils.logging import logger
 
 
@@ -134,10 +139,16 @@ async def search_profiles(
     """Find adult, mutually compatible profiles and rank them by saved preferences."""
     if (
         profile is None
+        or not profile.is_active
         or profile.age < 18
         or profile.latitude is None
         or profile.longitude is None
     ):
+        return []
+    viewer_status = await session.scalar(
+        select(UserModel.status).where(UserModel.id == profile.id)
+    )
+    if viewer_status is None or viewer_status == 0:
         return []
 
     automatic_range = calculate_age_range(profile.age)
@@ -169,8 +180,45 @@ async def search_profiles(
     min_profiles = min_profiles or search.MIN_PROFILES
     block_size = block_size or search.BLOCK_SIZE
 
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    recent_interactions = select(
+    mode = user_mode or "legacy"
+    cooldown_cutoff = datetime.now(timezone.utc) - timedelta(
+        days=search.REDISCOVERY_COOLDOWN_DAYS
+    )
+    mode_decisions = select(
+        case(
+            (InteractionDecisionModel.actor_id == profile.id, InteractionDecisionModel.target_id),
+            else_=InteractionDecisionModel.actor_id,
+        )
+    ).where(
+        or_(
+            and_(
+                InteractionDecisionModel.actor_id == profile.id,
+                InteractionDecisionModel.mode == mode,
+                InteractionDecisionModel.decision.in_(("like", "pass")),
+            ),
+            and_(
+                InteractionDecisionModel.target_id == profile.id,
+                InteractionDecisionModel.mode == mode,
+                InteractionDecisionModel.decision.in_(("like", "pass")),
+            ),
+        )
+    )
+    matched_users = select(
+        case(
+            (PairMatchModel.user_low_id == profile.id, PairMatchModel.user_high_id),
+            else_=PairMatchModel.user_low_id,
+        )
+    ).where(
+        PairMatchModel.mode.in_((mode, "legacy")),
+        or_(PairMatchModel.user_low_id == profile.id, PairMatchModel.user_high_id == profile.id),
+    )
+    recent_deliveries = select(DiscoveryDeliveryEventModel.target_id).where(
+        DiscoveryDeliveryEventModel.viewer_id == profile.id,
+        DiscoveryDeliveryEventModel.mode == mode,
+        DiscoveryDeliveryEventModel.status == "delivered",
+        DiscoveryDeliveryEventModel.delivered_at > cooldown_cutoff,
+    )
+    legacy_interactions = select(
         case(
             (MatchModel.sender_id == profile.id, MatchModel.receiver_id),
             else_=MatchModel.sender_id,
@@ -178,19 +226,25 @@ async def search_profiles(
     ).where(
         or_(MatchModel.sender_id == profile.id, MatchModel.receiver_id == profile.id),
         MatchModel.is_active.is_(True),
-        or_(
-            MatchModel.status != MatchStatus.Rejected,
-            and_(
-                MatchModel.status == MatchStatus.Rejected,
-                MatchModel.updated_at >= thirty_days_ago,
-            ),
-        ),
+        or_(MatchModel.mode == "legacy", MatchModel.mode == mode),
     )
-    reported_profiles = select(ProfileCompleintsModel.receiver_id).where(
-        ProfileCompleintsModel.sender_id == profile.id,
-        ProfileCompleintsModel.status.in_(
-            (CompleintStatus.Pending, CompleintStatus.Accepted)
+    reported_profiles = select(
+        case(
+            (ProfileCompleintsModel.sender_id == profile.id, ProfileCompleintsModel.receiver_id),
+            else_=ProfileCompleintsModel.sender_id,
+        )
+    ).where(
+        or_(
+            ProfileCompleintsModel.sender_id == profile.id,
+            ProfileCompleintsModel.receiver_id == profile.id,
         ),
+        ProfileCompleintsModel.status.in_((CompleintStatus.Pending, CompleintStatus.Accepted)),
+    )
+    blocked_profiles = select(UserBlockModel.blocked_id).where(
+        UserBlockModel.blocker_id == profile.id
+    )
+    blocked_by_profiles = select(UserBlockModel.blocker_id).where(
+        UserBlockModel.blocked_id == profile.id
     )
 
     conditions = [
@@ -199,10 +253,16 @@ async def search_profiles(
         ProfileModel.age >= 18,
         ProfileModel.age.between(age_min, age_max),
         build_role_matching_conditions(profile.role, profile.find_role),
+        UserModel.status != 0,
         or_(ProfileModel.preferred_age_min.is_(None), ProfileModel.preferred_age_min <= profile.age),
         or_(ProfileModel.preferred_age_max.is_(None), ProfileModel.preferred_age_max >= profile.age),
-        ProfileModel.id.not_in(recent_interactions),
+        ProfileModel.id.not_in(mode_decisions),
+        ProfileModel.id.not_in(matched_users),
+        ProfileModel.id.not_in(recent_deliveries),
+        ProfileModel.id.not_in(legacy_interactions),
         ProfileModel.id.not_in(reported_profiles),
+        ProfileModel.id.not_in(blocked_profiles),
+        ProfileModel.id.not_in(blocked_by_profiles),
     ]
     if user_mode:
         conditions.append(UserModel.current_mode == user_mode)

@@ -1,6 +1,13 @@
 from .complaint import ProfileCompleintsModel
-from .match import MatchModel
+from .match import (
+    DiscoveryDeliveryCursorModel,
+    DiscoveryDeliveryEventModel,
+    InteractionDecisionModel,
+    MatchModel,
+    MatchNotificationModel,
+    PairMatchModel,
+)
 from .profile import ProfileModel
 from .profile_media import ProfileMediaModel
 from .referal import ReferalModel
-from .user import UserModel
+from .user import UserBlockModel, UserModel

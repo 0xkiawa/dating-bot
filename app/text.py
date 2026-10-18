@@ -309,11 +309,14 @@ Want to come back? Just send /start to reactivate!
             return _("🤝 No friend requests in Friends mode yet... but your tribe is forming! 🌈")
         return _("📭 Your inbox is empty... for now! Keep conquering! 👑")
 
-    def LIKE_ACCEPT(self, language: str):
-        return _(
-            "🎉 <b>It's a match!</b>\n\nGo conquer together: <a href='{}'>{}</a>",
-            locale=normalize_locale(language),
+    def LIKE_ACCEPT(self, language: str, mode: str | None = None):
+        mode_label = {"fun": "Fun", "dates": "Dates", "friends": "Friends"}.get(
+            mode, "an earlier mode"
         )
+        return _(
+            "🎉 <b>It's a match in {mode}!</b>\n\nGo conquer together: <a href='{{}}'>{{}}</a>",
+            locale=normalize_locale(language),
+        ).format(mode=mode_label)
 
     @property
     def MESSAGE_TO_YOU(self):

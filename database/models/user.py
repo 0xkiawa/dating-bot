@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Integer, String
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import BaseModel, StatusMixin
@@ -30,4 +30,22 @@ class UserModel(BaseModel):
 
     profile: Mapped["ProfileModel"] = relationship(  # type: ignore
         "ProfileModel", uselist=False, back_populates="user"
+    )
+
+
+class UserBlockModel(BaseModel):
+    """Global safety block that excludes discovery in every mode."""
+
+    __tablename__ = "user_blocks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    blocker_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    blocked_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("blocker_id", "blocked_id", name="uq_user_block_direction"),
     )

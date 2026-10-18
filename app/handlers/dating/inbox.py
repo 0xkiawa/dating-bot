@@ -3,14 +3,12 @@ import html
 from aiogram import F, types
 from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.business.dating_service import send_user_like_alert
 from app.business.profile_service import complaint_to_profile, send_profile_with_dist
 from app.business.menu_service import answer_inline_message
 from app.constans import EFFECTS_DICTIONARY
-from app.handlers.common.start import start_command
 from app.keyboards.default.base import match_kb
 from app.keyboards.default.compleint import compleint_kb
 from app.keyboards.inline.menus import mode_menu_ikb
@@ -23,65 +21,11 @@ from database.services import Match, Profile, User
 from loader import bot
 
 
-async def _send_mutual_like_notifications(session: AsyncSession, user: UserModel) -> None:
-    """
-    Отправляет уведомления о взаимных лайках для матчей со статусом Accepted,
-    которые исходят от пользователя
-    """
-    effect_id = EFFECTS_DICTIONARY["🎉"]
-
-    # Найти все матчи со статусом Accepted, где пользователь является отправителем
-    result = await session.execute(
-        select(MatchModel)
-        .where(MatchModel.sender_id == user.id)
-        .where(MatchModel.status == MatchStatus.Accepted)
-        .where(MatchModel.is_active == True)
-    )
-    accepted_matches = result.scalars().all()
-    for match in accepted_matches:
-        try:
-            # Получаем профиль получателя
-            receiver = await User.get_with_profile(session, match.receiver_id)
-            await send_profile_with_dist(session=session, user=user, profile=receiver.profile)
-            if receiver and receiver.profile:
-                # Get current mode for personalized message
-                current_mode = await User.get_mode(session, user.id)
-                
-                # Генерируем ссылку с персонализированным сообщением
-                link = generate_user_link(
-                    id=receiver.id, 
-                    username=receiver.username,
-                    sender_profile=user.profile,
-                    mode=current_mode
-                )
-                text = mt.LIKE_ACCEPT(user.language).format(
-                    link, html.escape(receiver.profile.name)
-                )
-
-                # Отправляем уведомление
-                await bot.send_message(
-                    chat_id=user.id, text=text, message_effect_id=effect_id, parse_mode="HTML"
-                )
-
-                # Деактивируем матч, чтобы не отправлять уведомление повторно
-                await Match.update(session=session, id=match.id, is_active=False)
-
-        except Exception as e:
-            pass
-
-
 @dating_router.message(StateFilter(None), F.text == "📭")
 async def match_archive(
     message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession
 ) -> None:
-    """Архив лайков анкеты пользовтеля - FILTERED BY CURRENT MODE"""
-    await show_match_archive(
-        message,
-        state,
-        user,
-        session,
-        username=message.from_user.username,
-    )
+    await show_match_archive(message, state, user, session, username=message.from_user.username)
 
 
 async def show_match_archive(
@@ -92,78 +36,58 @@ async def show_match_archive(
     username: str | None,
 ) -> None:
     await state.clear()
-    await state.set_state(LikeResponse.response)
-    await User.update(
-        session,
-        id=user.id,
-        username=username,
-    )  # needs to be redone
+    await User.update(session, id=user.id, username=username)
+    items = await Match.inbox_items(session, user.id)
+    from app.handlers.dating.search import deliver_match_notifications
 
-    # Get current mode
+    await deliver_match_notifications(session)
     current_mode = await User.get_mode(session, user.id)
-    
-    if not current_mode:
-        await message.answer(mt.NO_MODE_SELECTED)
-        return
-
-    # Проверяем и отправляем уведомления о взаимных лайках
-    await _send_mutual_like_notifications(session, user)
-
-    # Get matches filtered by current mode
-    if liker_ids := await Match.get_user_matchs_by_mode(session, user.id, current_mode):
-        text = mt.ARCHIVE_SEARCH.format(len(liker_ids))
-        await message.answer(text=text, reply_markup=match_kb)
-
-        await state.update_data(ids=liker_ids, current_mode=current_mode)
-        profile = await Profile.get(session, liker_ids[0])
-        match_data = await Match.get(session, user.id, profile.id)
-        await send_profile_with_dist(user=user, profile=profile, session=session)
-        if match_data and match_data.message:
-            await message.answer(mt.MESSAGE_TO_YOU.format(match_data.message))
-    else:
-        # Show mode-specific empty message
+    if not items:
         await answer_inline_message(message, mt.LIKE_ARCHIVE(current_mode), mode_menu_ikb())
+        return
+    await state.set_state(LikeResponse.response)
+    await state.update_data(inbox_items=items, inbox_index=0)
+    await message.answer(mt.ARCHIVE_SEARCH.format(len(items)), reply_markup=match_kb)
+    await _show_inbox_item(message, state, user, session, items[0])
 
 
 @dating_router.callback_query(StateFilter("*"), F.data == "archive")
 async def _match_atchive_callback(
     callback: types.CallbackQuery, state: FSMContext, user: UserModel, session: AsyncSession
 ) -> None:
-    """Архив лайков анкеты пользовтеля - FILTERED BY CURRENT MODE"""
-    await state.set_state(LikeResponse.response)
-    await User.update(
-        session,
-        id=user.id,
-        username=callback.from_user.username,
-    )  # needs to be redone
-    await callback.message.answer(text=mt.SEARCH, reply_markup=match_kb)
+    """Open the mode-labeled likes and matches archive."""
     await callback.answer()
+    await show_match_archive(
+        callback.message,
+        state,
+        user,
+        session,
+        username=callback.from_user.username,
+    )
 
-    # Get current mode
-    current_mode = await User.get_mode(session, user.id)
-    
-    if not current_mode:
-        await callback.message.answer(mt.NO_MODE_SELECTED)
+
+async def _show_inbox_item(message, state, user, session, item: dict) -> None:
+    profile = await Profile.get(session, item["user_id"])
+    if not profile:
         return
-
-    # Проверяем и отправляем уведомления о взаимных лайках
-    await _send_mutual_like_notifications(session, user)
-
-    # Get matches filtered by current mode
-    if liker_ids := await Match.get_user_matchs_by_mode(session, callback.from_user.id, current_mode):
-        await state.update_data(ids=liker_ids, current_mode=current_mode)
-        profile = await Profile.get(session, liker_ids[0])
-        match_data = await Match.get(session, user.id, profile.id)
-        await send_profile_with_dist(user=user, profile=profile, session=session)
-        if match_data and match_data.message:
-            await callback.message.answer(mt.MESSAGE_TO_YOU.format(match_data.message))
+    await send_profile_with_dist(
+        user=user,
+        profile=profile,
+        session=session,
+        mode=item["mode"] if item["mode"] != "legacy" else None,
+    )
+    mode_label = {"fun": "Fun", "dates": "Dates", "friends": "Friends"}.get(
+        item["mode"], "an earlier mode (unknown)"
+    )
+    if item["kind"] == "match":
+        label = f"✅ You matched in {mode_label}."
+    elif item["kind"] == "legacy_like":
+        label = f"💌 This Like is from {mode_label}."
     else:
-        # Show mode-specific empty message
-        await answer_inline_message(
-            callback.message,
-            mt.LIKE_ARCHIVE(current_mode),
-            mode_menu_ikb(),
-        )
+        label = f"💌 This Like is from {mode_label}."
+    await message.answer(label)
+    if item.get("message"):
+        await message.answer(mt.MESSAGE_TO_YOU.format(item["message"]))
 
 
 @dating_router.message(
@@ -172,22 +96,68 @@ async def _match_atchive_callback(
 async def _match_response(
     message: types.Message, state: FSMContext, user: UserModel, session: AsyncSession
 ) -> None:
-    """'Свайпы' людей которые лайкнули анкету пользователя"""
+    """Respond to a pending Like or browse a mode-labeled match."""
     data = await state.get_data()
-    ids = data.get("ids")
-    current_mode = data.get("current_mode")
-
-    another_user = await User.get_with_profile(session, ids[0])
-    match_data = await Match.get(session, user.id, another_user.id)
+    items = data.get("inbox_items", [])
+    index = data.get("inbox_index", 0)
+    if index >= len(items):
+        await state.clear()
+        await answer_inline_message(message, mt.EMPTY_PROFILE_SEARCH(), mode_menu_ikb())
+        return
+    item = items[index]
+    another_user = await User.get_with_profile(session, item["user_id"])
+    if not another_user or not another_user.profile:
+        index += 1
+        await state.update_data(inbox_index=index)
+        if index < len(items):
+            await _show_inbox_item(message, state, user, session, items[index])
+        return
+    mode = item["mode"]
 
     if message.text == "❤️":
-        """Отправка пользователю который ответил на лайк"""
-        await like_accept(session=session, user=user, another_user=another_user, match=match_data, mode=current_mode)
+        if item["kind"] == "like":
+            from app.handlers.dating.search import deliver_match_notifications
+
+            _, match_id = await Match.record_decision(
+                session, user.id, another_user.id, mode, "like"
+            )
+            if match_id:
+                await deliver_match_notifications(session, match_id)
+        elif item["kind"] == "legacy_like":
+            match_data = await Match.get(session, user.id, another_user.id)
+            if match_data:
+                await Match.update(
+                    session=session,
+                    id=match_data.id,
+                    status=MatchStatus.Accepted,
+                    is_active=False,
+                )
+                legacy_match_id = await Match.record_legacy_match(
+                    session, user.id, another_user.id
+                )
+                from app.handlers.dating.search import deliver_match_notifications
+
+                await deliver_match_notifications(session, legacy_match_id)
+        else:
+            await like_accept(
+                session=session,
+                user=user,
+                another_user=another_user,
+                match=None,
+                mode=mode,
+            )
     elif message.text == "👎":
-        pass
-        await Match.update(
-            session=session, id=match_data.id, status=MatchStatus.Rejected, is_active=False
-        )
+        if item["kind"] == "like":
+            await Match.record_decision(session, user.id, another_user.id, mode, "pass")
+        elif item["kind"] == "legacy_like":
+            match_data = await Match.get(session, user.id, another_user.id)
+            if match_data:
+                await Match.update(
+                    session=session,
+                    id=match_data.id,
+                    status=MatchStatus.Rejected,
+                    is_active=False,
+                )
 
     elif message.text == "💢":
         await message.answer(mt.COMPLAINT, reply_markup=compleint_kb())
@@ -203,19 +173,15 @@ async def _match_response(
     elif message.text == "↩️":
         await message.answer(mt.SEARCH, reply_markup=match_kb)
 
-    ids.pop(0)
-    await state.update_data(ids=ids)
-    if ids:
-        profile = await Profile.get(session, ids[0])
-        match_data = await Match.get(session, user.id, profile.id)
-        await send_profile_with_dist(user=user, profile=profile, session=session)
-        if match_data and match_data.message:
-            await message.answer(mt.MESSAGE_TO_YOU.format(match_data.message))
+    index += 1
+    await state.update_data(inbox_index=index)
+    if index < len(items):
+        await _show_inbox_item(message, state, user, session, items[index])
     else:
-        # Show mode-specific empty message and return to mode menu
+        await state.clear()
         await answer_inline_message(
             message,
-            mt.EMPTY_PROFILE_SEARCH(current_mode),
+            mt.LIKE_ARCHIVE(await User.get_mode(session, user.id)),
             mode_menu_ikb(),
         )
 
@@ -282,9 +248,33 @@ def generate_user_link(id: int, username: str = None, sender_profile=None, mode:
         return f"tg://user?id={id}"
 
 async def like_accept(
-    session: AsyncSession, user: UserModel, another_user: UserModel, match: MatchModel, mode: str = None
+    session: AsyncSession,
+    user: UserModel,
+    another_user: UserModel,
+    match: MatchModel | None,
+    mode: str = None,
 ):
     effect_id = EFFECTS_DICTIONARY["🎉"]
+    if match is None:
+        link = generate_user_link(
+            id=another_user.id,
+            username=another_user.username,
+            sender_profile=user.profile,
+            mode=mode,
+        )
+        text = mt.LIKE_ACCEPT(user.language, mode).format(
+            link, html.escape(another_user.profile.name)
+        )
+        try:
+            await bot.send_message(
+                chat_id=user.id,
+                text=text,
+                message_effect_id=effect_id,
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+        return
     if match.status == MatchStatus.Accepted:
         # Если изначальный отправитель получил взимный лайк и зашел в inbox
         sender = user
@@ -298,7 +288,9 @@ async def like_accept(
             sender_profile=sender.profile,
             mode=mode
         )
-        text = mt.LIKE_ACCEPT(sender.language).format(link, html.escape(reciver.profile.name))
+        text = mt.LIKE_ACCEPT(sender.language, mode).format(
+            link, html.escape(reciver.profile.name)
+        )
         try:
             await bot.send_message(
                 chat_id=sender.id, text=text, message_effect_id=effect_id, parse_mode="HTML"
@@ -320,7 +312,9 @@ async def like_accept(
             sender_profile=reciver.profile,
             mode=mode
         )
-        text = mt.LIKE_ACCEPT(reciver.language).format(link, html.escape(sender.profile.name))
+        text = mt.LIKE_ACCEPT(reciver.language, mode).format(
+            link, html.escape(sender.profile.name)
+        )
         try:
             await bot.send_message(
                 chat_id=reciver.id, text=text, message_effect_id=effect_id, parse_mode="HTML"

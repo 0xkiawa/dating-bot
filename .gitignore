@@ -3,6 +3,7 @@
 .vscode
 .venv
 .github
+.test-tmp/
 
 
 **/__pycache__
@@ -19,3 +20,4 @@
 
 **/database/migrations/versions/*
 !**/database/migrations/versions/__init__.py
+!**/database/migrations/versions/20261017_mode_aware_matching.py

@@ -45,6 +45,16 @@ def profile_actions_ikb(
             ),
         ]
     )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text=f"🚫 {_('Block')}",
+                callback_data=ProfileActionCallback(
+                    action="block", profile_id=profile_id, value=""
+                ).pack(),
+            )
+        ]
+    )
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 

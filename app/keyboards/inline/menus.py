@@ -6,6 +6,7 @@ from app.filters.kb_filter import (
     ModeConfirmCallback,
     ModeMenuCallback,
     ModeSelectionCallback,
+    UnblockUserCallback,
 )
 from loader import _
 
@@ -89,5 +90,21 @@ def mode_menu_ikb() -> InlineKeyboardMarkup:
         text=f"⚙️ {_('Preferences')}",
         callback_data=ModeMenuCallback(action="preferences"),
     )
-    builder.adjust(2, 2, 2, 1)
+    builder.button(
+        text=f"🚫 {_('Blocked users')}",
+        callback_data=ModeMenuCallback(action="blocks"),
+    )
+    builder.adjust(2, 2, 2, 2)
+    return builder.as_markup()
+
+
+def blocked_users_ikb(users: list[tuple[int, str]]) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for user_id, name in users:
+        builder.button(
+            text=f"🔓 {_('Unblock')} {name}",
+            callback_data=UnblockUserCallback(user_id=user_id),
+        )
+    builder.button(text=f"⬅️ {_('Back')}", callback_data=ModeMenuCallback(action="back"))
+    builder.adjust(1)
     return builder.as_markup()

@@ -129,6 +129,16 @@ This project uses **Alembic** for database migrations.
 
 Ensure `alembic.ini` has the correct database URL before running migrations.
 
+The mode-aware matching migration adds mode-scoped Likes, Passes, matches, and
+discovery delivery history. Apply it with `alembic upgrade head`; bot startup
+also performs an idempotent schema upgrade for existing installs. Historical
+interaction rows are retained and labeled `legacy` when their original mode
+was not recorded. This migration is intentionally irreversible so it cannot
+delete interaction history.
+
+Set `REDISCOVERY_COOLDOWN_DAYS` to change the same-mode rediscovery cooldown
+(default: `21`).
+
 
 #### Redis
 The radishes will be used as FSM storage. If redis is not connected the standard aiogram storage will be used.

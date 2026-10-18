@@ -4,6 +4,7 @@ from aiogram import types
 from aiogram.types import BufferedInputFile, InlineKeyboardButton, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from PIL import Image, ImageFilter
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.filters.kb_filter import CarouselNavCallback, PhotoRevealCallback
@@ -17,7 +18,7 @@ from database.models.user import UserModel
 from database.services.complaint import Compleint
 from database.services.photo_reveal import PhotoReveal
 from database.services.profile_media import ProfileMedia
-from database.services.search import get_match_reasons, haversine_distance
+from database.services.search import get_match_reasons, haversine_distance, search_profiles
 from loader import bot
 from utils.logging import logger
 
@@ -334,6 +335,78 @@ async def send_profile_with_dist(
         reply_markup=markup,
         protect_content=True,
     )
+
+
+async def send_discovery_profile(
+    *,
+    user: UserModel,
+    profile: ProfileModel,
+    session: AsyncSession,
+    mode: str,
+    filters: dict | None = None,
+):
+    """Send a discovery card only after reserving its durable pair/mode slot."""
+    from database.services.match import Match
+
+    profile = await session.scalar(
+        select(ProfileModel)
+        .where(ProfileModel.id == profile.id)
+        .execution_options(populate_existing=True)
+    )
+    viewer_profile = await session.scalar(
+        select(ProfileModel)
+        .where(ProfileModel.id == user.id)
+        .execution_options(populate_existing=True)
+    )
+    if not profile or not viewer_profile:
+        return None
+    user.profile = viewer_profile
+
+    # Reapply the current explicit filters immediately before delivery. This
+    # also rechecks age, role compatibility, distance, profile state and reports.
+    filters = filters or {}
+    original_find_role = viewer_profile.find_role
+    viewer_profile.find_role = filters.get("role_filter") or original_find_role
+    try:
+        eligible_ids = await search_profiles(
+            session,
+            viewer_profile,
+            user_mode=mode,
+            hosting_filter=filters.get("hosting_filter", "all"),
+            min_age=filters.get("min_age"),
+            max_age=filters.get("max_age"),
+            force_shuffle=False,
+        )
+    finally:
+        viewer_profile.find_role = original_find_role
+    if profile.id not in eligible_ids:
+        return None
+
+    token = await Match.reserve_delivery(session, user.id, profile.id, mode)
+    if token is None:
+        return None
+    current_viewer = await session.scalar(
+        select(UserModel.current_mode).where(UserModel.id == user.id)
+    )
+    current_target = await session.scalar(
+        select(UserModel.current_mode).where(UserModel.id == profile.id)
+    )
+    if current_viewer != mode or current_target != mode:
+        await Match.complete_delivery(session, token, delivered=False)
+        return None
+    try:
+        sent = await send_profile_with_dist(
+            user=user,
+            profile=profile,
+            session=session,
+            include_actions=True,
+            mode=mode,
+        )
+    except Exception:
+        await Match.complete_delivery(session, token, delivered=False)
+        raise
+    await Match.complete_delivery(session, token, delivered=True)
+    return sent
 
 
 async def complaint_to_profile(

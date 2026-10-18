@@ -16,18 +16,24 @@ async def create_tables():
         from database.connect import async_engine, async_session
         from database.models.base import BaseModel
         from database.models.profile import ProfileModel
-        from database.schema import ensure_profile_match_columns, ensure_user_consent_columns
+        from database.schema import (
+            backfill_legacy_pair_matches,
+            ensure_mode_aware_matching_columns,
+            ensure_profile_match_columns,
+            ensure_user_consent_columns,
+        )
         from sqlalchemy import update
         
         # Just import the modules to register the models
-        import database.models.user
-        import database.models.profile
+        import database.models
         
         logger.log("BOT", "Creating database tables...")
         async with async_engine.begin() as conn:
             await conn.run_sync(BaseModel.metadata.create_all)
             await conn.run_sync(ensure_profile_match_columns)
             await conn.run_sync(ensure_user_consent_columns)
+            await conn.run_sync(ensure_mode_aware_matching_columns)
+            await conn.run_sync(backfill_legacy_pair_matches)
         logger.log("BOT", "✅ Tables created successfully!")
         
         # Existing profiles under 18 must not remain visible in discovery.

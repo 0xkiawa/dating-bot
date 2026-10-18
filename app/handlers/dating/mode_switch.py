@@ -6,12 +6,14 @@ from aiogram.filters import Command, Filter
 from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.business.menu_service import answer_inline_message
-from app.business.profile_service import send_profile_with_dist
-from app.filters.kb_filter import BrowseFilterCallback, ModeMenuCallback
+from app.filters.kb_filter import BrowseFilterCallback, ModeMenuCallback, UnblockUserCallback
+from app.handlers.dating.search import next_profile
 from app.keyboards.inline.menus import (
+    blocked_users_ikb,
     main_menu_ikb,
     mode_confirm_ikb,
     mode_menu_ikb,
@@ -26,8 +28,8 @@ from app.keyboards.inline.search_filters import (
 from app.routers import common_router, dating_router
 from app.states.default import Search
 from app.text import message_text as mt
-from database.models import UserModel
-from database.services import Profile, User
+from database.models import ProfileModel, UserBlockModel, UserModel
+from database.services import User
 from database.services.search import search_profiles
 from loader import _
 
@@ -227,8 +229,42 @@ async def mode_menu_callback(
         from app.handlers.dating.preferences import show_preferences
 
         await show_preferences(callback.message, user)
+    elif callback_data.action == "blocks":
+        await show_blocked_users(callback.message, user, session)
     else:
         await callback.message.edit_text(mt.INVALID_OPTION, reply_markup=mode_menu_ikb())
+
+
+async def show_blocked_users(message: types.Message, user: UserModel, session: AsyncSession) -> None:
+    result = await session.execute(
+        select(UserBlockModel.blocked_id, ProfileModel.name)
+        .outerjoin(ProfileModel, ProfileModel.id == UserBlockModel.blocked_id)
+        .where(UserBlockModel.blocker_id == user.id)
+        .order_by(UserBlockModel.id)
+    )
+    blocked = [
+        (blocked_id, (name or f"User {blocked_id}")[:40])
+        for blocked_id, name in result.all()
+    ]
+    if not blocked:
+        await message.edit_text(_("You haven't blocked anyone."), reply_markup=mode_menu_ikb())
+        return
+    await message.edit_text(
+        _("Blocked users are hidden in every mode. Choose someone to unblock."),
+        reply_markup=blocked_users_ikb(blocked),
+    )
+
+
+@dating_router.callback_query(UnblockUserCallback.filter())
+async def unblock_user_callback(
+    callback: types.CallbackQuery,
+    callback_data: UnblockUserCallback,
+    user: UserModel,
+    session: AsyncSession,
+) -> None:
+    await User.unblock(session, user.id, callback_data.user_id)
+    await callback.answer(_("Unblocked"))
+    await show_blocked_users(callback.message, user, session)
 
 
 # Handle Browse Profiles button from mode menu
@@ -621,17 +657,13 @@ async def start_mode_search(
             filter_screen="search",
         )
 
-        first_profile = await Profile.get(session, profile_list[0])
-        sent_profile = await send_profile_with_dist(
-            user=user,
-            profile=first_profile,
-            session=session,
-            include_actions=True,
-            mode=mode,
-        )
-        await state.update_data(
-            active_card_chat_id=sent_profile.chat.id,
-            active_card_message_id=sent_profile.message_id,
+        await next_profile(
+            session,
+            message,
+            profile_list,
+            user,
+            state,
+            advance_current=False,
         )
     else:
         await state.clear()

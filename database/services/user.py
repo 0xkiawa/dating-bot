@@ -1,17 +1,49 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from database.services.base import BaseService
 from utils.logging import logger
 
-from ..models.user import UserModel, UserStatus
+from ..models.user import UserBlockModel, UserModel, UserStatus
 from .match import Match
 from .profile import Profile
 
 
 class User(BaseService):
     model = UserModel
+
+    @staticmethod
+    async def block(session: AsyncSession, blocker_id: int, blocked_id: int) -> bool:
+        """Create an idempotent global block used by discovery safety filters."""
+        if blocker_id == blocked_id:
+            return False
+        existing = await session.scalar(
+            select(UserBlockModel.id).where(
+                UserBlockModel.blocker_id == blocker_id,
+                UserBlockModel.blocked_id == blocked_id,
+            )
+        )
+        if existing:
+            return False
+        session.add(UserBlockModel(blocker_id=blocker_id, blocked_id=blocked_id))
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            return False
+        return True
+
+    @staticmethod
+    async def unblock(session: AsyncSession, blocker_id: int, blocked_id: int) -> bool:
+        result = await session.execute(
+            delete(UserBlockModel).where(
+                UserBlockModel.blocker_id == blocker_id,
+                UserBlockModel.blocked_id == blocked_id,
+            )
+        )
+        await session.commit()
+        return result.rowcount == 1
 
     @staticmethod
     async def get_with_profile(session: AsyncSession, id: int):

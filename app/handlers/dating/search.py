@@ -1,15 +1,21 @@
 import asyncio
+import html
+from datetime import datetime, timedelta, timezone
 
 from aiogram import F, types
 from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
+from sqlalchemy import or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.filters.create_profile_filtres as filters
 from app.business.dating_service import send_user_like_alert
 from app.business.menu_service import answer_inline_message
-from app.business.profile_service import complaint_to_profile, send_profile_with_dist
+from app.business.profile_service import (
+    complaint_to_profile,
+    send_discovery_profile,
+)
 from app.filters.kb_filter import ProfileActionCallback
 from app.keyboards.inline.menus import mode_menu_ikb
 from app.keyboards.inline.profile_actions import (
@@ -21,7 +27,6 @@ from app.routers import dating_router
 from app.states.default import Search
 from app.text import message_text as mt
 from database.models import UserModel
-from database.models.match import MatchStatus
 from database.services import Match, Profile, User
 from loader import _
 
@@ -54,11 +59,15 @@ async def _search_profile(
     await state.set_state(Search.search)
     await state.update_data(message_prompt_message_id=None)
     another_user = await User.get_with_profile(session, profile_list[0])
+    current_mode = data.get("current_mode")
     if (
         not another_user
         or not another_user.profile
         or not another_user.profile.is_active
         or another_user.profile.age < 18
+        or not current_mode
+        or await User.get_mode(session, user.id) != current_mode
+        or another_user.current_mode != current_mode
     ):
         await next_profile(session, message, profile_list, user, state)
         return
@@ -68,12 +77,14 @@ async def _search_profile(
             session=session,
             message=message,
             another_user=another_user,
+            mode=current_mode,
         )
     elif message.text == "👎":
         await dislike_profile(
             session=session,
             message=message,
             another_user=another_user,
+            mode=current_mode,
         )
     elif message.text == "📩":
         await state.set_state(Search.message)
@@ -104,11 +115,15 @@ async def _search_profile_compleint(
         )
         return
     another_user = await User.get_with_profile(session, profile_list[0])
+    current_mode = data.get("current_mode")
     if (
         not another_user
         or not another_user.profile
         or not another_user.profile.is_active
         or another_user.profile.age < 18
+        or not current_mode
+        or await User.get_mode(session, user.id) != current_mode
+        or another_user.current_mode != current_mode
     ):
         await next_profile(session, message, profile_list, user, state)
         return
@@ -144,11 +159,15 @@ async def _search_profile_mailing_(
     await state.set_state(Search.search)
     await state.update_data(message_prompt_message_id=None)
     another_user = await User.get_with_profile(session, profile_list[0])
+    current_mode = data.get("current_mode")
     if (
         not another_user
         or not another_user.profile
         or not another_user.profile.is_active
         or another_user.profile.age < 18
+        or not current_mode
+        or await User.get_mode(session, user.id) != current_mode
+        or another_user.current_mode != current_mode
     ):
         await next_profile(session, message, profile_list, user, state)
         return
@@ -160,6 +179,7 @@ async def _search_profile_mailing_(
         message=message,
         another_user=another_user,
         mail_text=message.text,
+        mode=current_mode,
     )
     await message.answer(mt.MAILING_LIKE, reply_markup=ReplyKeyboardRemove())
     await next_profile(session, message, profile_list, user, state)
@@ -177,6 +197,7 @@ async def next_profile(
     profile_list: list[int],
     user: UserModel,
     state: FSMContext,
+    advance_current: bool = True,
 ):
     """
     Move to next profile in search results.
@@ -201,25 +222,55 @@ async def next_profile(
         except Exception:
             pass
 
-    if profile_list:
+    if advance_current and profile_list:
         profile_list.pop(0)
     profile = None
+    current_mode = data.get("current_mode")
     while profile_list:
         candidate = await Profile.get(session, profile_list[0])
-        if candidate and candidate.is_active and candidate.age >= 18:
+        candidate_user = await User.get_with_profile(session, profile_list[0])
+        if (
+            candidate
+            and candidate_user
+            and candidate.is_active
+            and candidate.age >= 18
+            and current_mode
+            and candidate_user.current_mode == current_mode
+            and await User.get_mode(session, user.id) == current_mode
+        ):
             profile = candidate
             break
         profile_list.pop(0)
 
-    if profile:
-        await state.update_data(ids=profile_list)
-        sent_profile = await send_profile_with_dist(
+    sent_profile = None
+    while profile:
+        sent_profile = await send_discovery_profile(
             user=user,
             profile=profile,
             session=session,
-            include_actions=True,
-            mode=data.get("current_mode"),
+            mode=current_mode,
+            filters=data,
         )
+        if sent_profile:
+            break
+        profile_list.pop(0)
+        profile = None
+        while profile_list:
+            candidate_user = await User.get_with_profile(session, profile_list[0])
+            candidate = candidate_user.profile if candidate_user else None
+            if (
+                candidate
+                and candidate.is_active
+                and candidate.age >= 18
+                and candidate_user.current_mode == current_mode
+                and await User.get_mode(session, user.id) == current_mode
+            ):
+                profile = candidate
+                break
+            profile_list.pop(0)
+
+    if profile and sent_profile:
+        await state.update_data(ids=profile_list)
         await state.update_data(
             active_card_chat_id=sent_profile.chat.id,
             active_card_message_id=sent_profile.message_id,
@@ -244,11 +295,17 @@ async def like_profile(
     another_user: UserModel,
     mail_text: str | None = None,
     sender_id: int | None = None,
+    mode: str | None = None,
 ):
     sender_id = sender_id or message.from_user.id
-    is_create = await Match.create(session, sender_id, another_user.id, mail_text)
+    mode = mode or await User.get_mode(session, sender_id)
+    is_create, match_id = await Match.record_decision(
+        session, sender_id, another_user.id, mode, "like", mail_text
+    )
 
-    if is_create:
+    if match_id:
+        await deliver_match_notifications(session, match_id)
+    elif is_create:
         matchs_count = len(await Match.get_user_matchs(session, another_user.id))
         if matchs_count == 1 or matchs_count == 2 or matchs_count % 3 == 0:
             await send_user_like_alert(session, another_user)
@@ -259,18 +316,83 @@ async def dislike_profile(
     message: types.Message,
     another_user: UserModel,
     sender_id: int | None = None,
+    mode: str | None = None,
 ):
-    """
-    Records a dislike so this profile doesn't reappear in search immediately.
-    Gets recycled back into the search pool after 30 days (see database/services/search.py).
-    """
-    await Match.create(
+    actor_id = sender_id or message.from_user.id
+    mode = mode or await User.get_mode(session, actor_id)
+    await Match.record_decision(
         session=session,
-        sender_id=sender_id or message.from_user.id,
-        receiver_id=another_user.id,
-        mail_text=None,
-        status=MatchStatus.Rejected,
+        actor_id=actor_id,
+        target_id=another_user.id,
+        mode=mode,
+        decision="pass",
     )
+
+
+async def deliver_match_notifications(session: AsyncSession, match_id: int | None = None) -> None:
+    """Drain the per-recipient outbox; failed Telegram sends remain retryable."""
+    from sqlalchemy import select
+
+    from app.constans import EFFECTS_DICTIONARY
+    from database.models.match import MatchNotificationModel, PairMatchModel
+    from loader import bot
+
+    query = select(MatchNotificationModel).where(MatchNotificationModel.delivered_at.is_(None))
+    if match_id:
+        query = query.where(MatchNotificationModel.match_id == match_id)
+    notifications = (await session.scalars(query.order_by(MatchNotificationModel.id))).all()
+    for notification in notifications:
+        claimed = await session.execute(
+            update(MatchNotificationModel)
+            .where(
+                MatchNotificationModel.id == notification.id,
+                MatchNotificationModel.delivered_at.is_(None),
+                or_(
+                    MatchNotificationModel.claimed_at.is_(None),
+                    MatchNotificationModel.claimed_at
+                    < datetime.now(timezone.utc) - timedelta(minutes=5),
+                ),
+            )
+            .values(claimed_at=datetime.now(timezone.utc))
+        )
+        await session.commit()
+        if claimed.rowcount != 1:
+            continue
+        match = await session.get(PairMatchModel, notification.match_id)
+        if not match:
+            continue
+        recipient = await User.get_with_profile(session, notification.recipient_id)
+        other_id = (
+            match.user_high_id
+            if notification.recipient_id == match.user_low_id
+            else match.user_low_id
+        )
+        other = await User.get_with_profile(session, other_id)
+        if not recipient or not other or not other.profile:
+            continue
+        mode_label = {"fun": "Fun", "dates": "Dates", "friends": "Friends"}.get(
+            match.mode, "previous mode"
+        )
+        try:
+            await bot.send_message(
+                chat_id=recipient.id,
+                text=f"🎉 <b>It's a match in {mode_label}!</b>\n\n"
+                f"You and {html.escape(other.profile.name)} liked each other.",
+                message_effect_id=EFFECTS_DICTIONARY["🎉"],
+                parse_mode="HTML",
+            )
+            await session.execute(
+                update(MatchNotificationModel)
+                .where(MatchNotificationModel.id == notification.id)
+                .values(delivered_at=datetime.now(timezone.utc), claimed_at=None)
+            )
+        except Exception:
+            await session.execute(
+                update(MatchNotificationModel)
+                .where(MatchNotificationModel.id == notification.id)
+                .values(attempts=MatchNotificationModel.attempts + 1, claimed_at=None)
+            )
+        await session.commit()
 
 
 @dating_router.callback_query(ProfileActionCallback.filter())
@@ -302,11 +424,19 @@ async def profile_action_callback(
                 pass
             return
 
+        current_mode = data.get("current_mode")
+        if not current_mode or await User.get_mode(session, user.id) != current_mode:
+            await callback.answer(
+                _("Your active mode changed. Start discovery again."), show_alert=True
+            )
+            await state.clear()
+            return
+
         action = callback_data.action
         if current_state == Search.message.state and action == "message":
             await callback.answer(_("Send your message or cancel it first."))
             return
-        if current_state == Search.message.state and action in {"like", "pass", "report"}:
+        if current_state == Search.message.state and action in {"like", "pass", "report", "block"}:
             prompt_id = data.get("message_prompt_message_id")
             if prompt_id:
                 try:
@@ -321,29 +451,49 @@ async def profile_action_callback(
             await state.set_state(Search.search)
             await state.update_data(message_prompt_message_id=None)
 
-        if action in {"like", "pass", "message", "report"}:
+        if action in {"like", "pass", "message", "report", "block"}:
             await state.update_data(
                 active_card_chat_id=callback.message.chat.id,
                 active_card_message_id=callback.message.message_id,
             )
         target = await User.get_with_profile(session, callback_data.profile_id)
-        if not target or not target.profile or not target.profile.is_active or target.profile.age < 18:
+        if (
+            not target
+            or not target.profile
+            or not target.profile.is_active
+            or target.profile.age < 18
+            or target.current_mode != current_mode
+            or target.status == 0
+        ):
             await callback.answer(_("Skipping an unavailable profile."))
             await next_profile(session, callback.message, profile_ids, user, state)
             return
 
         if action == "like":
             await like_profile(
-                session, callback.message, target, sender_id=callback.from_user.id
+                session,
+                callback.message,
+                target,
+                sender_id=callback.from_user.id,
+                mode=current_mode,
             )
             await callback.answer(_("Liked"))
             await next_profile(session, callback.message, profile_ids, user, state)
             return
         if action == "pass":
             await dislike_profile(
-                session, callback.message, target, sender_id=callback.from_user.id
+                session,
+                callback.message,
+                target,
+                sender_id=callback.from_user.id,
+                mode=current_mode,
             )
             await callback.answer(_("Passed"))
+            await next_profile(session, callback.message, profile_ids, user, state)
+            return
+        if action == "block":
+            await User.block(session, user.id, target.id)
+            await callback.answer(_("Blocked"))
             await next_profile(session, callback.message, profile_ids, user, state)
             return
         if action == "message":

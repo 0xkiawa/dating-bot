@@ -1,5 +1,5 @@
 # Stage 1: builder
-FROM python:3.11-slim-bookworm as builder
+FROM python:3.13-slim-bookworm as builder
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 # Stage 2: final image
-FROM python:3.11-slim-bookworm
+FROM python:3.13-slim-bookworm
 
 WORKDIR /app
 

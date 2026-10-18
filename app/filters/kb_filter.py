@@ -50,6 +50,10 @@ class ProfileActionCallback(CallbackData, prefix="profileaction"):
     value: str
 
 
+class UnblockUserCallback(CallbackData, prefix="unblockuser"):
+    user_id: int
+
+
 class MatchPreferenceCallback(CallbackData, prefix="matchpref"):
     action: str
     value: str
