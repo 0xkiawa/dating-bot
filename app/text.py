@@ -78,8 +78,6 @@ Ready to play?
 
 🔍 - Browse hot matches
 📭 - See who wants you
-🎂 - Set age range
-🏠 - Set hosting preference
 💤 - Return to main menu
 """)
 
@@ -92,8 +90,6 @@ Looking for something real?
 
 🔍 - Browse potential matches
 📭 - See who's interested
-🎂 - Set age range
-🏠 - Set hosting preference
 💤 - Return to main menu
 """)
 
@@ -106,8 +102,6 @@ Building your tribe?
 
 🔍 - Browse friendly faces
 📭 - See who reached out
-🎂 - Set age range
-🏠 - Set hosting preference
 💤 - Return to main menu
 """)
 

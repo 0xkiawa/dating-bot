@@ -82,8 +82,6 @@ def mode_menu_ikb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="🔍", callback_data=ModeMenuCallback(action="browse"))
     builder.button(text="📭", callback_data=ModeMenuCallback(action="likes"))
-    builder.button(text="🎂", callback_data=ModeMenuCallback(action="age"))
-    builder.button(text="🏠", callback_data=ModeMenuCallback(action="hosting"))
     builder.button(text="⬅️ Back", callback_data=ModeMenuCallback(action="back"))
     builder.button(text="💤", callback_data=ModeMenuCallback(action="menu"))
     builder.button(
@@ -94,7 +92,7 @@ def mode_menu_ikb() -> InlineKeyboardMarkup:
         text=f"🚫 {_('Blocked users')}",
         callback_data=ModeMenuCallback(action="blocks"),
     )
-    builder.adjust(2, 2, 2, 2)
+    builder.adjust(2, 2, 2)
     return builder.as_markup()
 
 

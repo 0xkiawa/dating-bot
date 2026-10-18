@@ -165,18 +165,8 @@ async def search_profiles(
         return []
 
     automatic_range = calculate_age_range(profile.age)
-    saved_age_preference = (
-        profile.preferred_age_min is not None
-        or profile.preferred_age_max is not None
-    )
     if min_age is not None and max_age is not None:
         age_min, age_max = max(18, min_age), min(99, max_age)
-        if saved_age_preference:
-            age_min = max(age_min, profile.preferred_age_min or 18)
-            age_max = min(age_max, profile.preferred_age_max or 99)
-    elif saved_age_preference:
-        age_min = max(18, profile.preferred_age_min or 18)
-        age_max = profile.preferred_age_max or 99
     else:
         age_min = max(18, profile.age - automatic_range)
         age_max = min(99, profile.age + automatic_range)
@@ -184,10 +174,7 @@ async def search_profiles(
     if age_min > age_max or age_max < 18:
         return []
 
-    search_limit = min(
-        max_distance or search.MAX_DISTANCE,
-        profile.preferred_distance_km or max_distance or search.MAX_DISTANCE,
-    )
+    search_limit = max_distance or search.MAX_DISTANCE
     initial_distance = initial_distance or search.INITIAL_DISTANCE
     radius_step = radius_step or search.RADIUS_STEP
     min_profiles = min_profiles or search.MIN_PROFILES
@@ -267,8 +254,6 @@ async def search_profiles(
         ProfileModel.age.between(age_min, age_max),
         build_role_matching_conditions(profile.role, profile.find_role),
         UserModel.status != 0,
-        or_(ProfileModel.preferred_age_min.is_(None), ProfileModel.preferred_age_min <= profile.age),
-        or_(ProfileModel.preferred_age_max.is_(None), ProfileModel.preferred_age_max >= profile.age),
         ProfileModel.id.not_in(mode_decisions),
         ProfileModel.id.not_in(matched_users),
         ProfileModel.id.not_in(recent_deliveries),
@@ -297,15 +282,11 @@ async def search_profiles(
             candidate.longitude,
             earth_radius=earth_radius,
         )
-        candidate_limit = min(
-            search_limit,
-            candidate.preferred_distance_km or search_limit,
-        )
-        if distance <= candidate_limit:
+        if distance <= search_limit:
             candidates.append((candidate, distance))
 
     # Expand the effective radius until enough choices are available or the cap is reached.
-    # Candidate distances are already filtered against both people's saved distance limits.
+    # Age, role, and hosting filters come from the current Browse Matches flow.
     radius = min(initial_distance, search_limit)
     while radius < search_limit and sum(distance <= radius for _, distance in candidates) < min_profiles:
         radius = min(radius + radius_step, search_limit)

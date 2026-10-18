@@ -166,19 +166,25 @@ class ModeAwareMatchingTests(unittest.IsolatedAsyncioTestCase):
                     role="top",
                     find_role="all",
                     city="Nairobi",
-                    latitude=-1.29,
+                    latitude=-1.35,
                     longitude=36.82,
                     age=30,
                     is_active=True,
                     body_type="femme",
                     preferred_body_types=["muscular"],
                     interests=["music", "travel"],
+                    preferred_age_min=80,
+                    preferred_age_max=90,
+                    preferred_distance_km=1,
                 )
             )
             viewer = await session.get(ProfileModel, 101)
             viewer.body_type = "muscular"
             viewer.preferred_body_types = ["femme", "muscular"]
             viewer.interests = ["music", "travel"]
+            viewer.preferred_age_min = 70
+            viewer.preferred_age_max = 80
+            viewer.preferred_distance_km = 1
             await session.commit()
 
             candidate_ids = await search_profiles(

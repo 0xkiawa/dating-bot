@@ -5,14 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.filters.kb_filter import MainMenuCallback, MatchPreferenceCallback
 from app.keyboards.inline.match_preferences import (
-    AGE_RANGES,
     BODY_TYPES,
-    DISTANCES,
     INTENTS,
     INTERESTS,
-    age_preferences_ikb,
     body_type_preferences_ikb,
-    distance_preferences_ikb,
     interests_preferences_ikb,
     intent_preferences_ikb,
     preferences_ikb,
@@ -88,20 +84,6 @@ async def match_preference_callback(
             preferences_text(profile), reply_markup=preferences_ikb(profile)
         )
         return
-    if action == "ages":
-        await callback.answer()
-        await callback.message.edit_text(
-            _("Choose the age range you want to see:"),
-            reply_markup=age_preferences_ikb(profile),
-        )
-        return
-    if action == "distances":
-        await callback.answer()
-        await callback.message.edit_text(
-            _("Choose the maximum distance for matches:"),
-            reply_markup=distance_preferences_ikb(),
-        )
-        return
     if action == "intents":
         await callback.answer()
         await callback.message.edit_text(
@@ -128,33 +110,6 @@ async def match_preference_callback(
         await callback.message.edit_text(
             _("Choose all body types you’re into. Leave them unselected for no preference:"),
             reply_markup=preferred_body_types_ikb(profile),
-        )
-        return
-    if action == "set_age":
-        age_range = AGE_RANGES.get(value)
-        if age_range is None:
-            await callback.answer(_("That age range is unavailable."), show_alert=True)
-            return
-        profile.preferred_age_min, profile.preferred_age_max = age_range
-        await session.commit()
-        await callback.answer(_("Age preference saved."))
-        await callback.message.edit_text(
-            preferences_text(profile), reply_markup=preferences_ikb(profile)
-        )
-        return
-    if action == "set_distance":
-        try:
-            distance = int(value)
-        except ValueError:
-            distance = 0
-        if distance not in DISTANCES:
-            await callback.answer(_("That distance is unavailable."), show_alert=True)
-            return
-        profile.preferred_distance_km = distance
-        await session.commit()
-        await callback.answer(_("Distance preference saved."))
-        await callback.message.edit_text(
-            preferences_text(profile), reply_markup=preferences_ikb(profile)
         )
         return
     if action == "set_intent":

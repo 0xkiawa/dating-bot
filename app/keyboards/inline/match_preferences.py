@@ -37,28 +37,8 @@ INTENTS = {
     "casual": _("Casual dating"),
 }
 
-AGE_RANGES = {
-    "18_25": (18, 25),
-    "26_35": (26, 35),
-    "36_45": (36, 45),
-    "46_plus": (46, 99),
-    "auto": (None, None),
-}
-
-DISTANCES = (10, 25, 50, 100)
-
 
 def preferences_text(profile) -> str:
-    if profile.preferred_age_min is None or profile.preferred_age_max is None:
-        age_range = _("Automatic (based on your age)")
-    else:
-        age_range = f"{profile.preferred_age_min}–{profile.preferred_age_max}"
-
-    distance = (
-        f"{profile.preferred_distance_km} km"
-        if profile.preferred_distance_km is not None
-        else _("Default search radius")
-    )
     intent = INTENTS.get(profile.dating_intent or "open", INTENTS["open"])
     body_type = BODY_TYPE_LABELS.get(profile.body_type, _("Not selected"))
     preferred_body_types = [
@@ -73,16 +53,12 @@ def preferences_text(profile) -> str:
 
     return _(
         "<b>Match preferences</b>\n\n"
-        "Age range: {age}\n"
-        "Maximum distance: {distance}\n"
-        "Dating intention: {intent}\n"
         "My body type: {body_type}\n"
         "I'm into: {body_preferences}\n"
         "Interests: {interests}\n\n"
-        "These settings help rank compatible profiles. Shared interests improve match ranking."
+        "Dating intention: {intent}\n\n"
+        "Shared interests and body type preferences help rank compatible profiles."
     ).format(
-        age=age_range,
-        distance=distance,
         intent=intent,
         body_type=body_type,
         body_preferences=body_preferences,
@@ -91,40 +67,12 @@ def preferences_text(profile) -> str:
 
 
 def preferences_ikb(profile) -> InlineKeyboardMarkup:
-    age_label = (
-        f"{profile.preferred_age_min}–{profile.preferred_age_max}"
-        if profile.preferred_age_min is not None and profile.preferred_age_max is not None
-        else _("Automatic age range")
-    )
-    distance_label = (
-        f"{profile.preferred_distance_km} km"
-        if profile.preferred_distance_km is not None
-        else _("Default radius")
-    )
     interest_count = len(profile.interests or [])
     body_type_label = BODY_TYPE_LABELS.get(profile.body_type, _("Set body type"))
     preferred_body_type_count = len(profile.preferred_body_types or [])
     intent_label = INTENTS.get(profile.dating_intent or "open", INTENTS["open"])
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=f"🎂 {age_label}",
-                    callback_data=MatchPreferenceCallback(action="ages", value="").pack(),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text=f"📍 {distance_label}",
-                    callback_data=MatchPreferenceCallback(action="distances", value="").pack(),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text=f"💜 {intent_label}",
-                    callback_data=MatchPreferenceCallback(action="intents", value="").pack(),
-                )
-            ],
             [
                 InlineKeyboardButton(
                     text=f"👤 {_('My body type')}: {body_type_label}",
@@ -149,62 +97,18 @@ def preferences_ikb(profile) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
+                    text=f"💜 {intent_label}",
+                    callback_data=MatchPreferenceCallback(action="intents", value="").pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     text=f"⬅️ {_('Back to menu')}",
                     callback_data=MatchPreferenceCallback(action="back", value="").pack(),
                 )
             ],
         ]
     )
-
-
-def age_preferences_ikb(profile) -> InlineKeyboardMarkup:
-    rows = []
-    presets = (
-        ("18_25", "18–25"),
-        ("26_35", "26–35"),
-        ("36_45", "36–45"),
-        ("46_plus", "46+"),
-    )
-    for index in range(0, len(presets), 2):
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text=label,
-                    callback_data=MatchPreferenceCallback(
-                        action="set_age", value=value
-                    ).pack(),
-                )
-                for value, label in presets[index : index + 2]
-            ]
-        )
-    rows.append(
-        [
-            InlineKeyboardButton(
-                text=f"✅ {_('Automatic')}",
-                callback_data=MatchPreferenceCallback(action="set_age", value="auto").pack(),
-            )
-        ]
-    )
-    rows.append(_back_to_preferences_button())
-    return InlineKeyboardMarkup(inline_keyboard=rows)
-
-
-def distance_preferences_ikb() -> InlineKeyboardMarkup:
-    rows = []
-    for index in range(0, len(DISTANCES), 2):
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text=f"{distance} km",
-                    callback_data=MatchPreferenceCallback(
-                        action="set_distance", value=str(distance)
-                    ).pack(),
-                )
-                for distance in DISTANCES[index : index + 2]
-            ]
-        )
-    rows.append(_back_to_preferences_button())
-    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def intent_preferences_ikb(profile) -> InlineKeyboardMarkup:

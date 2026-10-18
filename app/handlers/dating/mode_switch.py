@@ -199,7 +199,7 @@ async def mode_menu_callback(
     elif callback_data.action == "back":
         await state.clear()
         await callback.message.edit_text(mt.SELECT_MODE, reply_markup=mode_selection_ikb())
-    elif callback_data.action in {"browse", "hosting"}:
+    elif callback_data.action in {"browse", "hosting", "age"}:
         await _start_browse_filter(
             callback.message, state, user, session, edit_in_place=True
         )
@@ -212,18 +212,6 @@ async def mode_menu_callback(
             user,
             session,
             username=callback.from_user.username,
-        )
-    elif callback_data.action == "age":
-        from app.keyboards.inline.match_preferences import age_preferences_ikb
-
-        if not user.profile:
-            await callback.message.edit_text(
-                mt.NO_PROFILE_FOR_SEARCH, reply_markup=mode_menu_ikb()
-            )
-            return
-        await callback.message.edit_text(
-            _("Choose the age range you want to see:"),
-            reply_markup=age_preferences_ikb(user.profile),
         )
     elif callback_data.action == "preferences":
         from app.handlers.dating.preferences import show_preferences
