@@ -27,6 +27,10 @@ class MainMenuCallback(CallbackData, prefix="mainmenu"):
     action: str
 
 
+class ShareLinkCallback(CallbackData, prefix="sharelink"):
+    action: str
+
+
 class ModeSelectionCallback(CallbackData, prefix="modeselect"):
     mode: str
 

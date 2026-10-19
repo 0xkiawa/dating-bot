@@ -14,8 +14,11 @@ class LoggingMiddleware(BaseMiddleware):
         data: Dict[str, Any],
     ) -> Any:
         if isinstance(event, Message):
+            logged_text = event.text
+            if logged_text and logged_text.split(maxsplit=1)[0].split("@", 1)[0].lower() == "/start":
+                logged_text = "/start [payload hidden]" if len(logged_text.split(maxsplit=1)) > 1 else "/start"
             logger.log(
-                "MESSAGE", f"{event.from_user.id} ({event.from_user.username}): {event.text}"
+                "MESSAGE", f"{event.from_user.id} ({event.from_user.username}): {logged_text}"
             )
 
         elif isinstance(event, CallbackQuery):

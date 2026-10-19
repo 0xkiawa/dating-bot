@@ -11,6 +11,11 @@ from database.models.user import UserStatus
 from database.services import User
 from database.services.profile import Profile
 from database.services.referal import Referal
+from database.services.share import (
+    get_share_start_payload,
+    resolve_share_slug,
+    save_pending_shared_view,
+)
 from utils.base62 import decode_base62
 from utils.logging import logger  # ADD THIS IMPORT
 
@@ -38,7 +43,10 @@ class CommonMiddleware(BaseMiddleware):
         if isinstance(message, Message) and is_create:
             code = "unk"
             try:
-                if inviter_code := getattr(data.get("command"), "args", None):
+                if (
+                    (inviter_code := getattr(data.get("command"), "args", None))
+                    and inviter_code.startswith("usr_")
+                ):
                     logger.log("DATABASE", f"Processing invite code: {inviter_code}")  # ADD THIS
                     code, inviter_id = inviter_code.split("_")
                     inviter_id = decode_base62(inviter_id)
@@ -67,6 +75,13 @@ class CommonMiddleware(BaseMiddleware):
                     id=user.id,
                     is_active=True,
                 )
+
+        if isinstance(message, Message):
+            share_payload = get_share_start_payload(message.text)
+            if share_payload:
+                target = await resolve_share_slug(session, share_payload)
+                if target and target.id != user.id:
+                    await save_pending_shared_view(session, user.id, target.id)
 
         data["user"] = user
         if not data.get("consent_gate_checked") and not await require_consent(message, user):

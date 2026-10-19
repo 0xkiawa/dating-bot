@@ -133,6 +133,10 @@ class User(BaseService):
                 is_active=False,
             )
 
+        from database.services.share import disable_share_link
+
+        await disable_share_link(session, id)
+
         await User.update(
             session=session,
             id=id,

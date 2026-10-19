@@ -10,6 +10,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.business.menu_service import answer_inline_message
+from database.services.share import (
+    get_pending_shared_target,
+    insert_shared_profile,
+)
 from app.filters.kb_filter import BrowseFilterCallback, ModeMenuCallback, UnblockUserCallback
 from app.handlers.dating.search import next_profile
 from app.keyboards.inline.menus import (
@@ -627,6 +631,13 @@ async def start_mode_search(
     finally:
         user.profile.find_role = original_find_role
 
+    shared_card_id = None
+    pending_shared = await get_pending_shared_target(session, user.id)
+    if pending_shared:
+        _pending_view, shared_target = pending_shared
+        profile_list = insert_shared_profile(profile_list, shared_target.id)
+        shared_card_id = shared_target.id
+
     if profile_list:
         if browse_filter_chat_id and browse_filter_message_id:
             await message.bot.edit_message_reply_markup(
@@ -643,6 +654,11 @@ async def start_mode_search(
             min_age=min_age,
             max_age=max_age,
             filter_screen="search",
+            shared_card_id=shared_card_id,
+            shared_card_mode=(
+                pending_shared[1].current_mode if pending_shared else None
+            ),
+            shared_pending_id=(pending_shared[0].id if pending_shared else None),
         )
 
         await next_profile(

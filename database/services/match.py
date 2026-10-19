@@ -397,9 +397,19 @@ class Match(BaseService):
 
     @staticmethod
     async def reserve_delivery(
-        session: AsyncSession, viewer_id: int, target_id: int, mode: str
+        session: AsyncSession,
+        viewer_id: int,
+        target_id: int,
+        mode: str,
+        *,
+        shared: bool = False,
     ) -> str | None:
-        """Atomically reserve a pair/mode delivery, rechecking mode and eligibility."""
+        """Atomically reserve a pair/mode delivery, rechecking mode and eligibility.
+
+        A share-card delivery uses the target's mode and bypasses prior swipes,
+        matches and cooldowns, while preserving profile, account, report and
+        global-block safety checks.
+        """
         from data.config import search
 
         if mode not in {"fun", "dates", "friends"} or viewer_id == target_id:
@@ -432,7 +442,7 @@ class Match(BaseService):
             .select_from(viewer.join(target, target.c.id == target_id))
             .where(
                 viewer.c.id == viewer_id,
-                viewer.c.current_mode == mode,
+                (shared or viewer.c.current_mode == mode),
                 target.c.current_mode == mode,
                 viewer.c.status != 0,
                 target.c.status != 0,
@@ -482,7 +492,27 @@ class Match(BaseService):
                 DiscoveryDeliveryEventModel.target_id == target_id,
                 DiscoveryDeliveryEventModel.mode == mode,
                 DiscoveryDeliveryEventModel.status == "delivered",
-                DiscoveryDeliveryEventModel.delivered_at >= cutoff,
+                or_(
+                    and_(
+                        DiscoveryDeliveryEventModel.source == "search",
+                        DiscoveryDeliveryEventModel.delivered_at >= cutoff,
+                    ),
+                    and_(
+                        DiscoveryDeliveryEventModel.source == "shared",
+                        DiscoveryDeliveryEventModel.delivered_at
+                        >= now - timedelta(days=21),
+                    ),
+                ),
+            )
+        )
+        recent_shared_delivery = exists(
+            select(DiscoveryDeliveryEventModel.id).where(
+                DiscoveryDeliveryEventModel.viewer_id == viewer_id,
+                DiscoveryDeliveryEventModel.target_id == target_id,
+                DiscoveryDeliveryEventModel.mode == mode,
+                DiscoveryDeliveryEventModel.status == "delivered",
+                DiscoveryDeliveryEventModel.source == "shared",
+                DiscoveryDeliveryEventModel.delivered_at >= now - timedelta(days=21),
             )
         )
         legacy_exclusion = exists(
@@ -527,30 +557,38 @@ class Match(BaseService):
             )
         )
 
+        delivery_conditions = [
+            DiscoveryDeliveryCursorModel.viewer_id == viewer_id,
+            DiscoveryDeliveryCursorModel.target_id == target_id,
+            DiscoveryDeliveryCursorModel.mode == mode,
+            or_(
+                shared,
+                and_(
+                    or_(
+                        DiscoveryDeliveryCursorModel.latest_delivered_at.is_(None),
+                        DiscoveryDeliveryCursorModel.latest_delivered_at <= cutoff,
+                    ),
+                    ~recent_shared_delivery,
+                ),
+            ),
+            or_(
+                DiscoveryDeliveryCursorModel.reserved_at.is_(None),
+                DiscoveryDeliveryCursorModel.reserved_at < stale_reservation,
+            ),
+            active_users,
+            active_profiles,
+            active_viewer_profile,
+            ~blocked,
+            ~reported,
+        ]
+        if not shared:
+            delivery_conditions.extend(
+                [~excluded_decision, ~excluded_match, ~recent_delivery, ~legacy_exclusion]
+            )
+
         updated = await session.execute(
             update(DiscoveryDeliveryCursorModel)
-            .where(
-                DiscoveryDeliveryCursorModel.viewer_id == viewer_id,
-                DiscoveryDeliveryCursorModel.target_id == target_id,
-                DiscoveryDeliveryCursorModel.mode == mode,
-                or_(
-                    DiscoveryDeliveryCursorModel.latest_delivered_at.is_(None),
-                    DiscoveryDeliveryCursorModel.latest_delivered_at <= cutoff,
-                ),
-                or_(
-                    DiscoveryDeliveryCursorModel.reserved_at.is_(None),
-                    DiscoveryDeliveryCursorModel.reserved_at < stale_reservation,
-                ),
-                active_users,
-                active_profiles,
-                active_viewer_profile,
-                ~excluded_decision,
-                ~excluded_match,
-                ~recent_delivery,
-                ~legacy_exclusion,
-                ~blocked,
-                ~reported,
-            )
+            .where(*delivery_conditions)
             .values(reservation_token=token, reserved_at=now)
         )
         if updated.rowcount != 1:
@@ -562,6 +600,7 @@ class Match(BaseService):
                 viewer_id=viewer_id,
                 target_id=target_id,
                 mode=mode,
+                source="shared" if shared else "search",
                 status="reserved",
                 reservation_token=token,
                 reserved_at=now,

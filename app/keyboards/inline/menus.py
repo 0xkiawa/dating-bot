@@ -15,12 +15,13 @@ def main_menu_ikb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="👤", callback_data=MainMenuCallback(action="profile"))
     builder.button(text="✉️", callback_data=MainMenuCallback(action="invite"))
+    builder.button(text="🔗 Share my profile", callback_data=MainMenuCallback(action="share"))
     builder.button(text="🎭", callback_data=MainMenuCallback(action="modes"))
     builder.button(
         text=f"⚙️ {_('Match preferences')}",
         callback_data=MainMenuCallback(action="preferences"),
     )
-    builder.adjust(2, 2)
+    builder.adjust(2, 1, 2)
     return builder.as_markup()
 
 

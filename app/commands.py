@@ -13,6 +13,7 @@ def get_default_commands() -> list:
         BotCommand(command="/dates", description="Match for romantic dates"),
         BotCommand(command="/friends", description="Match for friendship & connections"),
         BotCommand(command="/preferences", description="Match preferences"),
+        BotCommand(command="/share", description="Share your profile"),
     ]
 
     return commands
@@ -36,6 +37,7 @@ def get_admins_commands() -> list:
             BotCommand(command="/mailing", description="Mailing"),
             BotCommand(command="/ban", description="Ban user"),
             BotCommand(command="/unban", description="Unban user"),
+            BotCommand(command="/shareoff", description="Disable a share link"),
             BotCommand(command="/log", description="Logs"),
         ]
     )

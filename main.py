@@ -9,6 +9,8 @@ from data.config import tgbot
 from loader import bot, dp
 from utils.logging import logger
 
+_shared_view_cleanup_task: asyncio.Task | None = None
+
 
 async def create_tables():
     """Create database tables if they don't exist"""
@@ -18,6 +20,7 @@ async def create_tables():
         from database.models.profile import ProfileModel
         from database.schema import (
             backfill_legacy_pair_matches,
+            ensure_discovery_delivery_source_column,
             ensure_mode_aware_matching_columns,
             ensure_profile_match_columns,
             ensure_user_consent_columns,
@@ -33,6 +36,7 @@ async def create_tables():
             await conn.run_sync(ensure_profile_match_columns)
             await conn.run_sync(ensure_user_consent_columns)
             await conn.run_sync(ensure_mode_aware_matching_columns)
+            await conn.run_sync(ensure_discovery_delivery_source_column)
             await conn.run_sync(backfill_legacy_pair_matches)
         logger.log("BOT", "✅ Tables created successfully!")
         
@@ -56,12 +60,33 @@ async def create_tables():
 
 
 async def on_startup() -> None:
+    global _shared_view_cleanup_task
     await set_default_commands()
+    _shared_view_cleanup_task = asyncio.create_task(_cleanup_shared_views_periodically())
     logger.log("BOT", "~ Bot startup")
 
 
 async def on_shutdown() -> None:
+    if _shared_view_cleanup_task:
+        _shared_view_cleanup_task.cancel()
+        try:
+            await _shared_view_cleanup_task
+        except asyncio.CancelledError:
+            pass
     logger.log("BOT", "~ Bot shutting down...")
+
+
+async def _cleanup_shared_views_periodically() -> None:
+    from database.connect import async_session
+    from database.services.share import cleanup_expired_shared_views
+
+    while True:
+        try:
+            async with async_session() as session:
+                await cleanup_expired_shared_views(session)
+        except Exception as exc:
+            logger.error(f"Share-click cleanup failed: {exc}")
+        await asyncio.sleep(6 * 60 * 60)
 
 
 async def main():

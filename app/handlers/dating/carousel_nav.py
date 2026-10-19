@@ -36,10 +36,21 @@ async def carousel_nav_handler(
         Search.message.state,
     }
     state_data = await state.get_data()
+    shared_card = state_data.get("shared_card_id") == profile.id
+    card_mode = (
+        state_data.get("shared_card_mode") if shared_card else state_data.get("current_mode")
+    )
+    mode_names = {"fun": "Fun", "dates": "Dating", "friends": "Friends"}
+    mode_label = (
+        mode_names.get(card_mode)
+        if shared_card and card_mode != state_data.get("current_mode")
+        else None
+    )
     text = build_profile_caption(
         user.profile,
         profile,
-        mode=state_data.get("current_mode"),
+        mode=card_mode,
+        mode_label=mode_label,
         include_reasons=search_active,
         caption_limit=True,
     )

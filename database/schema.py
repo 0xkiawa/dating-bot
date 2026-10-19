@@ -51,6 +51,23 @@ def ensure_mode_aware_matching_columns(connection) -> None:
     connection.execute(text("UPDATE matchs SET mode = 'legacy' WHERE mode IS NULL"))
 
 
+def ensure_discovery_delivery_source_column(connection) -> None:
+    """Tag shared-card deliveries so discovery honors their 21-day cooldown."""
+    if "discovery_delivery_events" not in set(inspect(connection).get_table_names()):
+        return
+    columns = {
+        column["name"]
+        for column in inspect(connection).get_columns("discovery_delivery_events")
+    }
+    if "source" not in columns:
+        connection.execute(
+            text(
+                "ALTER TABLE discovery_delivery_events "
+                "ADD COLUMN source VARCHAR(10) NOT NULL DEFAULT 'search'"
+            )
+        )
+
+
 def backfill_legacy_pair_matches(connection) -> None:
     """Expose accepted pre-migration Likes as matches with an explicit mode."""
     tables = set(inspect(connection).get_table_names())

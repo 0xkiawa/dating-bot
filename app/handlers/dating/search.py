@@ -6,7 +6,7 @@ from aiogram import F, types
 from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
-from sqlalchemy import or_, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.filters.create_profile_filtres as filters
@@ -15,6 +15,7 @@ from app.business.menu_service import answer_inline_message
 from app.business.profile_service import (
     complaint_to_profile,
     send_discovery_profile,
+    send_shared_discovery_profile,
 )
 from app.filters.kb_filter import ProfileActionCallback
 from app.keyboards.inline.menus import mode_menu_ikb
@@ -26,8 +27,9 @@ from app.keyboards.inline.profile_actions import (
 from app.routers import dating_router
 from app.states.default import Search
 from app.text import message_text as mt
-from database.models import UserModel
+from database.models import UserBlockModel, UserModel
 from database.services import Match, Profile, User
+from database.services.share import consume_pending_shared_view
 from loader import _
 
 
@@ -60,14 +62,20 @@ async def _search_profile(
     await state.update_data(message_prompt_message_id=None)
     another_user = await User.get_with_profile(session, profile_list[0])
     current_mode = data.get("current_mode")
+    shared_card = data.get("shared_card_id") == profile_list[0]
+    interaction_mode = (
+        data.get("shared_card_mode") or (another_user.current_mode if another_user else None)
+        if shared_card
+        else current_mode
+    )
     if (
         not another_user
         or not another_user.profile
         or not another_user.profile.is_active
         or another_user.profile.age < 18
-        or not current_mode
-        or await User.get_mode(session, user.id) != current_mode
-        or another_user.current_mode != current_mode
+        or not interaction_mode
+        or (not shared_card and await User.get_mode(session, user.id) != current_mode)
+        or another_user.current_mode != interaction_mode
     ):
         await next_profile(session, message, profile_list, user, state)
         return
@@ -77,14 +85,14 @@ async def _search_profile(
             session=session,
             message=message,
             another_user=another_user,
-            mode=current_mode,
+            mode=interaction_mode,
         )
     elif message.text == "👎":
         await dislike_profile(
             session=session,
             message=message,
             another_user=another_user,
-            mode=current_mode,
+            mode=interaction_mode,
         )
     elif message.text == "📩":
         await state.set_state(Search.message)
@@ -116,14 +124,20 @@ async def _search_profile_compleint(
         return
     another_user = await User.get_with_profile(session, profile_list[0])
     current_mode = data.get("current_mode")
+    shared_card = data.get("shared_card_id") == profile_list[0]
+    interaction_mode = (
+        data.get("shared_card_mode") or (another_user.current_mode if another_user else None)
+        if shared_card
+        else current_mode
+    )
     if (
         not another_user
         or not another_user.profile
         or not another_user.profile.is_active
         or another_user.profile.age < 18
-        or not current_mode
-        or await User.get_mode(session, user.id) != current_mode
-        or another_user.current_mode != current_mode
+        or not interaction_mode
+        or (not shared_card and await User.get_mode(session, user.id) != current_mode)
+        or another_user.current_mode != interaction_mode
     ):
         await next_profile(session, message, profile_list, user, state)
         return
@@ -160,14 +174,20 @@ async def _search_profile_mailing_(
     await state.update_data(message_prompt_message_id=None)
     another_user = await User.get_with_profile(session, profile_list[0])
     current_mode = data.get("current_mode")
+    shared_card = data.get("shared_card_id") == profile_list[0]
+    interaction_mode = (
+        data.get("shared_card_mode") or (another_user.current_mode if another_user else None)
+        if shared_card
+        else current_mode
+    )
     if (
         not another_user
         or not another_user.profile
         or not another_user.profile.is_active
         or another_user.profile.age < 18
-        or not current_mode
-        or await User.get_mode(session, user.id) != current_mode
-        or another_user.current_mode != current_mode
+        or not interaction_mode
+        or (not shared_card and await User.get_mode(session, user.id) != current_mode)
+        or another_user.current_mode != interaction_mode
     ):
         await next_profile(session, message, profile_list, user, state)
         return
@@ -179,7 +199,7 @@ async def _search_profile_mailing_(
         message=message,
         another_user=another_user,
         mail_text=message.text,
-        mode=current_mode,
+        mode=interaction_mode,
     )
     await message.answer(mt.MAILING_LIKE, reply_markup=ReplyKeyboardRemove())
     await next_profile(session, message, profile_list, user, state)
@@ -226,9 +246,22 @@ async def next_profile(
         profile_list.pop(0)
     profile = None
     current_mode = data.get("current_mode")
+    shared_card_id = data.get("shared_card_id")
     while profile_list:
         candidate = await Profile.get(session, profile_list[0])
         candidate_user = await User.get_with_profile(session, profile_list[0])
+        if profile_list[0] == shared_card_id:
+            if (
+                candidate
+                and candidate_user
+                and candidate.is_active
+                and candidate.age >= 18
+                and candidate_user.current_mode == data.get("shared_card_mode")
+            ):
+                profile = candidate
+                break
+            profile_list.pop(0)
+            continue
         if (
             candidate
             and candidate_user
@@ -244,13 +277,29 @@ async def next_profile(
 
     sent_profile = None
     while profile:
-        sent_profile = await send_discovery_profile(
-            user=user,
-            profile=profile,
-            session=session,
-            mode=current_mode,
-            filters=data,
-        )
+        if profile.id == shared_card_id:
+            try:
+                sent_profile = await send_shared_discovery_profile(
+                    user=user,
+                    target_id=profile.id,
+                    pending_id=data.get("shared_pending_id"),
+                    session=session,
+                )
+            except Exception:
+                # Keep the pending row retryable; continue the current search.
+                sent_profile = None
+            if sent_profile:
+                await consume_pending_shared_view(
+                    session, data.get("shared_pending_id")
+                )
+        else:
+            sent_profile = await send_discovery_profile(
+                user=user,
+                profile=profile,
+                session=session,
+                mode=current_mode,
+                filters=data,
+            )
         if sent_profile:
             break
         profile_list.pop(0)
@@ -279,7 +328,7 @@ async def next_profile(
         # Get current mode from state
         data = await state.get_data()
         current_mode = data.get("current_mode")
-        
+
         # Clear state and show mode-specific empty message
         await state.clear()
         await answer_inline_message(
@@ -425,7 +474,10 @@ async def profile_action_callback(
             return
 
         current_mode = data.get("current_mode")
-        if not current_mode or await User.get_mode(session, user.id) != current_mode:
+        shared_card = data.get("shared_card_id") == callback_data.profile_id
+        if not current_mode or (
+            not shared_card and await User.get_mode(session, user.id) != current_mode
+        ):
             await callback.answer(
                 _("Your active mode changed. Start discovery again."), show_alert=True
             )
@@ -457,13 +509,33 @@ async def profile_action_callback(
                 active_card_message_id=callback.message.message_id,
             )
         target = await User.get_with_profile(session, callback_data.profile_id)
+        interaction_mode = (
+            data.get("shared_card_mode") or (target.current_mode if target else None)
+            if shared_card
+            else current_mode
+        )
+        blocked = (
+            await session.scalar(
+                select(UserBlockModel.id).where(
+                    or_(
+                        (UserBlockModel.blocker_id == user.id)
+                        & (UserBlockModel.blocked_id == callback_data.profile_id),
+                        (UserBlockModel.blocker_id == callback_data.profile_id)
+                        & (UserBlockModel.blocked_id == user.id),
+                    )
+                )
+            )
+            if shared_card
+            else False
+        )
         if (
             not target
             or not target.profile
             or not target.profile.is_active
             or target.profile.age < 18
-            or target.current_mode != current_mode
+            or target.current_mode != interaction_mode
             or target.status == 0
+            or blocked
         ):
             await callback.answer(_("Skipping an unavailable profile."))
             await next_profile(session, callback.message, profile_ids, user, state)
@@ -475,7 +547,7 @@ async def profile_action_callback(
                 callback.message,
                 target,
                 sender_id=callback.from_user.id,
-                mode=current_mode,
+                mode=interaction_mode,
             )
             await callback.answer(_("Liked"))
             await next_profile(session, callback.message, profile_ids, user, state)
@@ -486,7 +558,7 @@ async def profile_action_callback(
                 callback.message,
                 target,
                 sender_id=callback.from_user.id,
-                mode=current_mode,
+                mode=interaction_mode,
             )
             await callback.answer(_("Passed"))
             await next_profile(session, callback.message, profile_ids, user, state)

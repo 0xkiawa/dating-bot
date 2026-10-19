@@ -7,6 +7,7 @@ from app.routers import dating_router
 from app.text import message_text as mt
 from database.models import UserModel
 from database.services import Profile
+from database.services.share import expire_pending_shared_views_for_target
 
 
 @dating_router.message(StateFilter(None), F.text == "❌")
@@ -19,4 +20,6 @@ async def _disable_profile_command(
         id=user.id,
         is_active=False,
     )
+    await expire_pending_shared_views_for_target(session, user.id)
+    await session.commit()
     await message.answer(text=mt.DISABLE_PROFILE, reply_markup=start_kb)

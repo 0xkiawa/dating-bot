@@ -11,7 +11,7 @@ from loader import bot
 
 # Bump this value whenever either policy changes. Users who accepted an older
 # version will be asked to review and accept the new one before using the bot.
-CURRENT_CONSENT_VERSION = "2026-10-16-v2"
+CURRENT_CONSENT_VERSION = "2026-10-20-v1"
 CONSENT_EFFECTIVE_DATE = date.fromisoformat(CURRENT_CONSENT_VERSION[:10]).strftime("%d %B %Y")
 
 CONSENT_CALLBACKS = {
@@ -28,7 +28,7 @@ Effective date: {CONSENT_EFFECTIVE_DATE}
 
 CONQUEER is for adults aged 18 and over. By tapping <b>I Agree</b>, you confirm you are at least 18, accept the Terms of Service and Privacy Policy, and consent to the processing of the profile and sensitive personal data needed to operate the service.
 
-Profiles, photos, approximate location, likes, matches and reports are processed to run matching and keep the community safe. Other users can see the profile details and photos you choose to share. We do not verify identities or conduct background checks, and meetings are at your own risk. You can request access, correction or deletion of your data through the contact in the Privacy Policy.
+Profiles, photos, approximate location, likes, matches and reports are processed to run matching and keep the community safe. If you create a share link, we store share-click records (visitor, profile owner and time) for up to 14 days. Other users can see the profile details and photos you choose to share. We do not verify identities or conduct background checks, and meetings are at your own risk. You can request access, correction or deletion of your data through the contact in the Privacy Policy.
 
 Please read both documents before agreeing. You cannot use the bot unless you agree.
 """.strip()
@@ -172,6 +172,15 @@ class ExistingConsentUpdateMiddleware(BaseMiddleware):
 
         if user.status == UserStatus.Banned:
             return await handler(update, data)
+
+        # Let /start reach CommonMiddleware so a share payload is recorded
+        # before that middleware displays the updated consent prompt.
+        if isinstance(event, Message):
+            command = (event.text or "").split(maxsplit=1)
+            command = command[0].split("@", maxsplit=1)[0].lower() if command else ""
+            if command == "/start":
+                data["user"] = user
+                return await handler(update, data)
 
         if not await require_consent(event, user):
             return

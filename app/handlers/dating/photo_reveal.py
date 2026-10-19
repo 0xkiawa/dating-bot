@@ -59,10 +59,21 @@ async def reveal_photo_handler(
         Search.message.state,
     }
     state_data = await state.get_data()
+    shared_card = state_data.get("shared_card_id") == media_obj.profile_id
+    card_mode = (
+        state_data.get("shared_card_mode") if shared_card else state_data.get("current_mode")
+    )
+    mode_names = {"fun": "Fun", "dates": "Dating", "friends": "Friends"}
+    mode_label = (
+        mode_names.get(card_mode)
+        if shared_card and card_mode != state_data.get("current_mode")
+        else None
+    )
     caption_text = build_profile_caption(
         viewer,
         profile,
-        mode=state_data.get("current_mode"),
+        mode=card_mode,
+        mode_label=mode_label,
         include_reasons=search_active,
         caption_limit=True,
     )

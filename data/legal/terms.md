@@ -1,6 +1,6 @@
 # CONQUEER — Terms of Service
 
-**Effective date:** 16 October 2026
+**Effective date:** 20 October 2026
 **Operator:** KWIWI DIGITAL SOLUTIONS, based in Kenya ("we", "us", "CONQUEER")
 **Contact:** @conqueeradmin on Telegram
 
@@ -29,6 +29,8 @@ CONQUEER is **only an introduction platform.** We do not arrange, supervise or t
 3.2 **You are solely responsible for knowing and following the laws that apply to you.** We do not provide legal advice and we do not encourage anyone to break any law.
 
 3.3 Think carefully about your own safety and privacy before sharing personal information or photos, especially in places where your identity, orientation or conduct could put you at risk.
+
+3.4 You may choose to create a share-profile link. Anyone can copy or post that link. A person who already uses CONQUEER may see your normal profile card after opening it; a new visitor must accept the Terms and create a profile first. The link does not contain your personal details. You control the link and can turn it off or replace it at any time. Share-click records identifying the visitor, profile owner and click time are kept for up to 14 days.
 
 ## 4. Your account and profile
 

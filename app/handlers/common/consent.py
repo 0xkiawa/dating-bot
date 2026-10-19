@@ -5,12 +5,14 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.business.menu_service import menu
+from app.handlers.common.share import deliver_pending_share_to_existing_member
 from app.consent import CURRENT_CONSENT_VERSION, send_policy
 from app.keyboards.inline.menus import welcome_menu_ikb
 from app.routers import common_router
 from app.text import message_text as mt
 from data.config import LOGO_DIR
 from database.models.user import UserModel
+from database.services.share import get_pending_shared_view
 from loader import bot
 
 
@@ -41,6 +43,11 @@ async def accept_consent(
 
     # Preserve an in-progress flow if a returning user encountered a version
     # update while they were already using the bot.
+    if user.profile and await deliver_pending_share_to_existing_member(
+        user=user, state=state, session=session
+    ):
+        return
+
     if await state.get_state():
         await bot.send_message(
             chat_id=callback.from_user.id,
@@ -50,9 +57,15 @@ async def accept_consent(
         await menu(user.id)
     else:
         photo = types.FSInputFile(LOGO_DIR)
+        pending = await get_pending_shared_view(session, user.id)
+        teaser = (
+            "\n\nA CONQUEER member shared their profile with you. Create yours to see them."
+            if pending
+            else ""
+        )
         await bot.send_photo(
             chat_id=callback.from_user.id,
             photo=photo,
-            caption=mt.WELCOME,
+            caption=mt.WELCOME + teaser,
             reply_markup=welcome_menu_ikb(),
         )

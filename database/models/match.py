@@ -127,6 +127,9 @@ class DiscoveryDeliveryEventModel(BaseModel):
         BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     mode: Mapped[str] = mapped_column(String(20), nullable=False)
+    source: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default="search"
+    )
     status: Mapped[str] = mapped_column(String(10), nullable=False, server_default="reserved")
     reservation_token: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)
     reserved_at: Mapped[datetime] = mapped_column(
@@ -138,6 +141,7 @@ class DiscoveryDeliveryEventModel(BaseModel):
         Index("ix_delivery_event_pair", "viewer_id", "target_id", "mode"),
         Index("ix_delivery_cooldown", "viewer_id", "mode", "status", "delivered_at"),
         CheckConstraint("mode IN ('fun', 'dates', 'friends')", name="delivery_mode_check"),
+        CheckConstraint("source IN ('search', 'shared')", name="delivery_source_check"),
         CheckConstraint(
             "status IN ('reserved', 'delivered', 'failed')", name="delivery_status_check"
         ),

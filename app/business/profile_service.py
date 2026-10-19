@@ -6,6 +6,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from PIL import Image, ImageFilter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.filters.kb_filter import CarouselNavCallback, PhotoRevealCallback
 from app.keyboards.inline.admin import block_user_ikb
@@ -72,7 +73,9 @@ async def _get_or_create_blurred_file_id(
 
     input_file = BufferedInputFile(buffer.read(), filename="blurred.jpg")
 
-    sent = await bot.send_photo(chat_id=viewer_chat_id, photo=input_file)
+    sent = await bot.send_photo(
+        chat_id=viewer_chat_id, photo=input_file, protect_content=True
+    )
     new_file_id = sent.photo[-1].file_id
 
     media_obj.blurred_file_id = new_file_id
@@ -97,6 +100,7 @@ def build_profile_caption(
     viewer_profile: ProfileModel | None,
     profile: ProfileModel,
     mode: str | None = None,
+    mode_label: str | None = None,
     include_reasons: bool = False,
     caption_limit: bool = False,
 ) -> str:
@@ -127,6 +131,8 @@ def build_profile_caption(
     if include_reasons and viewer_profile:
         reasons = get_match_reasons(viewer_profile, profile, mode, distance)
         suffix = "\n\n✨ " + " · ".join(reasons)
+    if mode_label:
+        suffix += f"\n\n🎭 Shared in {mode_label} mode"
 
     if caption_limit and len(heading) + len(description) + len(suffix) > 950:
         available = max(0, 950 - len(heading) - len(suffix) - 1)
@@ -302,6 +308,8 @@ async def send_profile_with_dist(
     session: AsyncSession,
     include_actions: bool = False,
     mode: str | None = None,
+    mode_label: str | None = None,
+    protect_content: bool = False,
 ) -> types.Message:
     """Отправляет профиль пользователя с расстоянием, как карусель фото (◀️▶️ + точки + reveal)"""
     media_items = await ProfileMedia.get_profile_photos(session=session, profile_id=profile.id)
@@ -310,6 +318,7 @@ async def send_profile_with_dist(
         user.profile,
         profile,
         mode=mode,
+        mode_label=mode_label,
         include_reasons=include_actions,
         caption_limit=bool(media_items),
     )
@@ -317,7 +326,12 @@ async def send_profile_with_dist(
     markup = profile_actions_ikb(profile.id) if include_actions else None
 
     if not media_items:
-        return await bot.send_message(chat_id=user.id, text=text, reply_markup=markup)
+        return await bot.send_message(
+            chat_id=user.id,
+            text=text,
+            reply_markup=markup,
+            protect_content=protect_content,
+        )
 
     photo_id, caption, markup = await build_carousel_page(
         session=session,
@@ -401,6 +415,89 @@ async def send_discovery_profile(
             session=session,
             include_actions=True,
             mode=mode,
+        )
+    except Exception:
+        await Match.complete_delivery(session, token, delivered=False)
+        raise
+    await Match.complete_delivery(session, token, delivered=True)
+    return sent
+
+
+async def send_shared_discovery_profile(
+    *,
+    user: UserModel,
+    target_id: int,
+    pending_id: int | None,
+    session: AsyncSession,
+):
+    """Deliver an eligible share card with the regular protected card controls."""
+    from sqlalchemy import select
+
+    from database.models.share import PendingSharedViewModel
+    from database.services.match import Match
+    from database.services.share import shared_target_is_eligible
+
+    viewer = await session.scalar(
+        select(UserModel)
+        .options(joinedload(UserModel.profile))
+        .where(UserModel.id == user.id)
+    )
+    target = await shared_target_is_eligible(session, user.id, target_id)
+    if (
+        not viewer
+        or viewer.status == 0
+        or not viewer.profile
+        or not viewer.profile.is_active
+        or viewer.profile.age < 18
+        or not target
+    ):
+        return None
+    if pending_id is not None and not await session.scalar(
+        select(PendingSharedViewModel.id).where(
+            PendingSharedViewModel.id == pending_id,
+            PendingSharedViewModel.viewer_id == user.id,
+            PendingSharedViewModel.target_id == target_id,
+            PendingSharedViewModel.status == "pending",
+        )
+    ):
+        return None
+
+    target_mode = target.current_mode
+    token = await Match.reserve_delivery(
+        session, user.id, target.id, target_mode, shared=True
+    )
+    if token is None:
+        return None
+
+    # Recheck the share switch, account state and global blocks after reserving.
+    target = await shared_target_is_eligible(session, user.id, target_id)
+    pending_still_valid = pending_id is None or bool(
+        await session.scalar(
+            select(PendingSharedViewModel.id).where(
+                PendingSharedViewModel.id == pending_id,
+                PendingSharedViewModel.status == "pending",
+            )
+        )
+    )
+    if not target or target.current_mode != target_mode or not pending_still_valid:
+        await Match.complete_delivery(session, token, delivered=False)
+        return None
+
+    mode_names = {"fun": "Fun", "dates": "Dating", "friends": "Friends"}
+    mode_label = (
+        mode_names.get(target_mode)
+        if viewer.current_mode != target_mode
+        else None
+    )
+    try:
+        sent = await send_profile_with_dist(
+            user=viewer,
+            profile=target.profile,
+            session=session,
+            include_actions=True,
+            mode=target_mode,
+            mode_label=mode_label,
+            protect_content=True,
         )
     except Exception:
         await Match.complete_delivery(session, token, delivered=False)

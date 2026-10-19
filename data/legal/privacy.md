@@ -1,6 +1,6 @@
 # CONQUEER — Privacy Policy
 
-**Effective date:** 16 October 2026
+**Effective date:** 20 October 2026
 **Data controller:** KWIWI DIGITAL SOLUTIONS, based in Kenya ("we", "us", "CONQUEER")
 **Contact for privacy matters:** @conqueeradmin on Telegram
 
@@ -32,6 +32,8 @@ This policy explains what personal data the CONQUEER Telegram bot collects, why,
 - Which photos you have revealed and when (so "one reveal" rules work).
 - Reports you make or receive, and moderation actions (warnings, bans).
 - Referral information if you joined through an invite link.
+- If you opt in, a share-link setting and random slug that contains no profile or Telegram details.
+- When someone opens your share link, the visitor ID, profile owner ID and click time. These share-click records are kept for up to 14 days so the bot can show the shared profile after the visitor accepts the Terms and completes onboarding.
 - Technical logs (for example, actions and errors) used to run and secure the service.
 
 We do **not** ask for your real legal name, ID documents, phone number or email.
@@ -42,6 +44,7 @@ We do **not** ask for your real legal name, ID documents, phone number or email.
 |---|---|
 | Create and show your profile to other users | Profile details, photos |
 | Match you with compatible people | Age, role, mode, hosting, distance, filters |
+| Let you invite people to your profile | Your opt-in share-link setting and share-click records (visitor, profile owner and time; up to 14 days) |
 | Blur and reveal photos according to your settings | Photos, privacy setting, reveal records |
 | Notify you about likes and matches | Telegram ID, activity |
 | Keep the community safe (reports, bans, removing underage users) | Profile, reports, logs |
@@ -57,6 +60,8 @@ Using a platform for LGBTQ+ connection can reveal information about your sexual 
 ## 5. Who can see your data
 
 **Other users** can see what you put on your profile: name, age, city (or distance if both users share location), description, role, hosting preference and photos (subject to your blur/reveal setting). Do not put anything on your profile you are not comfortable with other users seeing.
+
+A share link is optional and only exists after you create it. Anyone can copy or post the link. A member who already uses CONQUEER may see your normal profile card after opening it; a new visitor must accept the Terms and create a profile first. You can turn the link off or replace it at any time. The link itself contains no personal information.
 
 **Moderators and us.** We, and any moderators we appoint, can access profiles and reports when reviewing them. The operator also sees account sign-ups and basic activity statistics.
 
@@ -76,6 +81,7 @@ We offer blur-and-reveal and use Telegram's content protection on photos we send
 
 - **Active accounts:** while you use CONQUEER.
 - **Disabled profiles:** your profile is hidden but your data remains until you ask us to delete it.
+- **Share-click records:** kept for up to 14 days, then deleted.
 - **After a deletion request:** we delete your profile, photos, likes, matches and related records within **30 days**, except for anything we are legally required to keep.
 - **Logs and backups** may persist for a short additional period before being overwritten.
 - If we are investigating a report or violation involving your account, we may delay deletion until that is resolved.

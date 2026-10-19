@@ -216,7 +216,17 @@ async def search_profiles(
         DiscoveryDeliveryEventModel.viewer_id == profile.id,
         DiscoveryDeliveryEventModel.mode == mode,
         DiscoveryDeliveryEventModel.status == "delivered",
-        DiscoveryDeliveryEventModel.delivered_at > cooldown_cutoff,
+        or_(
+            and_(
+                DiscoveryDeliveryEventModel.source == "search",
+                DiscoveryDeliveryEventModel.delivered_at > cooldown_cutoff,
+            ),
+            and_(
+                DiscoveryDeliveryEventModel.source == "shared",
+                DiscoveryDeliveryEventModel.delivered_at
+                > datetime.now(timezone.utc) - timedelta(days=21),
+            ),
+        ),
     )
     legacy_interactions = select(
         case(

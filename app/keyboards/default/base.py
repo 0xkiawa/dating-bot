@@ -6,7 +6,7 @@ del_kb = ReplyKeyboardRemove()
 
 cancel_kb = kb_gen(["/cancel"])
 start_kb = kb_gen(["/start"])
-profile_kb = kb_gen(["🔄", "🖼", "✍️", "❌"], ["↩️"])
+profile_kb = kb_gen(["🔄", "🖼"], ["✍️", "❌"], ["🔗 Share my profile"], ["↩️"])
 
 
 search_kb = kb_gen(["❤️", "📩", "👎"], ["💢"], ["💤"])

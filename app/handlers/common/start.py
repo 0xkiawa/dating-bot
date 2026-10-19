@@ -11,15 +11,23 @@ from app.keyboards.inline.menus import (
     welcome_menu_ikb,
 )
 from app.routers import common_router
+from app.handlers.common.share import deliver_pending_share_to_existing_member
 from app.text import message_text as mt
 from data.config import LOGO_DIR
 from database.models import UserModel
+from database.services.share import get_pending_shared_view
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @common_router.message(StateFilter("*"), F.text == "💤")
 @common_router.message(StateFilter("*"), Command("cancel"))
 @common_router.message(StateFilter("*"), CommandStart())
-async def start_command(message: types.Message, user: UserModel, state: FSMContext) -> None:
+async def start_command(
+    message: types.Message,
+    user: UserModel,
+    state: FSMContext,
+    session: AsyncSession,
+) -> None:
     """
     Команда /start запускает бота и возвращает пользователя в начальное меню.
     Сброс состояния помогает, если пользователь запутался — всегда можно начать сначала.
@@ -30,12 +38,22 @@ async def start_command(message: types.Message, user: UserModel, state: FSMConte
     await state.clear()
 
     if user.profile:
+        if await deliver_pending_share_to_existing_member(
+            user=user, state=state, session=session
+        ):
+            return
         await menu(user.id)
     else:
         photo = types.FSInputFile(LOGO_DIR)
+        pending = await get_pending_shared_view(session, user.id)
+        teaser = (
+            "\n\nA CONQUEER member shared their profile with you. Create yours to see them."
+            if pending
+            else ""
+        )
         await message.answer_photo(
             photo=photo,
-            caption=mt.WELCOME,
+            caption=mt.WELCOME + teaser,
             reply_markup=welcome_menu_ikb(),
         )
 
