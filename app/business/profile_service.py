@@ -259,7 +259,7 @@ async def _schedule_reblur_carousel(
         try:
             await bot.delete_message(chat_id=chat_id, message_id=message_id)
         except Exception as e:
-            logger.log("PHOTO_REVEAL", f"Could not delete revealed message: {e}")
+            logger.warning(f"Could not delete revealed message: {e}")
 
         # Search cards are one-shot. If the viewer has already passed this card
         # or exhausted the search, remove the revealed message without posting
@@ -295,7 +295,7 @@ async def _schedule_reblur_carousel(
                         chat_id=sent.chat.id, message_id=sent.message_id
                     )
         except Exception as e:
-            logger.log("PHOTO_REVEAL", f"Could not send fresh blurred photo: {e}")
+            logger.warning(f"Could not send fresh blurred photo: {e}")
 
     task = asyncio.create_task(_reblur())
     _pending_reblur_tasks.add(task)
