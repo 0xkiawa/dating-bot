@@ -288,8 +288,7 @@ async def start_share_message_edit(
         return
     await state.set_state(ShareMessageEdit.message)
     await callback.message.edit_text(
-        "Send the custom caption you want recipients to see (up to 1000 characters). "
-        "Your current default or custom caption stays hidden here. Use /cancel to stop editing.",
+        "Type your custom share message.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
                 [

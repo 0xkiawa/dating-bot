@@ -83,11 +83,14 @@ async def _cleanup_old_pending(session: AsyncSession) -> None:
             PendingSharedViewModel.created_at < cutoff,
         )
         .values(status="expired")
+        .execution_options(synchronize_session=False)
     )
     # Keep share-click records for no longer than the 14-day period described
     # in the Privacy Policy. The status update still makes expiry explicit.
     await session.execute(
-        delete(PendingSharedViewModel).where(PendingSharedViewModel.created_at < cutoff)
+        delete(PendingSharedViewModel)
+        .where(PendingSharedViewModel.created_at < cutoff)
+        .execution_options(synchronize_session=False)
     )
 
 

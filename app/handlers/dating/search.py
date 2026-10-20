@@ -32,6 +32,7 @@ from database.models import UserBlockModel, UserModel
 from database.services import Match, Profile, User
 from database.services.share import consume_pending_shared_view
 from loader import _
+from utils.time import time_ago
 
 
 _profile_action_locks: dict[int, asyncio.Lock] = {}
@@ -434,8 +435,9 @@ async def deliver_match_notifications(session: AsyncSession, match_id: int | Non
             await bot.send_message(
                 chat_id=recipient.id,
                 text=f"🎉 <b>It's a match in {mode_label}!</b>\n\n"
-                f"You and {html.escape(other.profile.name)} liked each other.\n\n"
-                f"You can contact each other on Telegram now.{contact_note}",
+                f"You matched with {html.escape(other.profile.name)} "
+                f"{time_ago(match.created_at)}.\n\n"
+                f"Contact is shared—message each other here.{contact_note}",
                 message_effect_id=EFFECTS_DICTIONARY["🎉"],
                 parse_mode="HTML",
                 reply_markup=match_contact_ikb(other),

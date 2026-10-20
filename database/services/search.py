@@ -184,6 +184,13 @@ async def search_profiles(
     cooldown_cutoff = datetime.now(timezone.utc) - timedelta(
         days=search.REDISCOVERY_COOLDOWN_DAYS
     )
+    active_decision = or_(
+        InteractionDecisionModel.decision == "like",
+        and_(
+            InteractionDecisionModel.decision == "pass",
+            InteractionDecisionModel.created_at > cooldown_cutoff,
+        ),
+    )
     mode_decisions = select(
         case(
             (InteractionDecisionModel.actor_id == profile.id, InteractionDecisionModel.target_id),
@@ -191,17 +198,11 @@ async def search_profiles(
         )
     ).where(
         or_(
-            and_(
-                InteractionDecisionModel.actor_id == profile.id,
-                InteractionDecisionModel.mode == mode,
-                InteractionDecisionModel.decision.in_(("like", "pass")),
-            ),
-            and_(
-                InteractionDecisionModel.target_id == profile.id,
-                InteractionDecisionModel.mode == mode,
-                InteractionDecisionModel.decision.in_(("like", "pass")),
-            ),
-        )
+            InteractionDecisionModel.actor_id == profile.id,
+            InteractionDecisionModel.target_id == profile.id,
+        ),
+        InteractionDecisionModel.mode == mode,
+        active_decision,
     )
     matched_users = select(
         case(

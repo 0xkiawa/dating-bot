@@ -47,6 +47,47 @@ class Match(BaseService):
         return insert(model).values(**values)
 
     @staticmethod
+    async def _upsert_interaction_decision(
+        session: AsyncSession, values: dict
+    ) -> bool:
+        """Replace a user's prior swipe so an expired Pass can be reconsidered."""
+        dialect = session.get_bind().dialect.name
+        if dialect == "sqlite":
+            from sqlalchemy.dialects.sqlite import insert as dialect_insert
+        elif dialect == "postgresql":
+            from sqlalchemy.dialects.postgresql import insert as dialect_insert
+        else:
+            existing = await session.scalar(
+                select(InteractionDecisionModel)
+                .where(
+                    InteractionDecisionModel.actor_id == values["actor_id"],
+                    InteractionDecisionModel.target_id == values["target_id"],
+                    InteractionDecisionModel.mode == values["mode"],
+                )
+                .with_for_update()
+            )
+            if existing:
+                existing.decision = values["decision"]
+                existing.message = values["message"]
+                existing.created_at = values["created_at"]
+            else:
+                session.add(InteractionDecisionModel(**values))
+            await session.flush()
+            return True
+
+        statement = dialect_insert(InteractionDecisionModel).values(**values)
+        statement = statement.on_conflict_do_update(
+            index_elements=["actor_id", "target_id", "mode"],
+            set_={
+                "decision": values["decision"],
+                "message": values["message"],
+                "created_at": values["created_at"],
+            },
+        )
+        result = await session.execute(statement)
+        return result.rowcount == 1
+
+    @staticmethod
     async def record_decision(
         session: AsyncSession,
         actor_id: int,
@@ -78,11 +119,16 @@ class Match(BaseService):
         if actor_id == target_id or decision not in {"like", "pass"}:
             return False, None
 
+        from data.config import search as search_config
+
+        now = datetime.now(timezone.utc)
+        pass_cutoff = now - timedelta(days=search_config.REDISCOVERY_COOLDOWN_DAYS)
         if decision == "like":
-            existing_pass = await session.scalar(
+            recent_pass = await session.scalar(
                 select(InteractionDecisionModel.id).where(
                     InteractionDecisionModel.mode == mode,
                     InteractionDecisionModel.decision == "pass",
+                    InteractionDecisionModel.created_at >= pass_cutoff,
                     or_(
                         and_(
                             InteractionDecisionModel.actor_id == actor_id,
@@ -126,25 +172,30 @@ class Match(BaseService):
                     ),
                 ).limit(1)
             )
-            if existing_pass or safety_exclusion or reported_pair:
+            if recent_pass or safety_exclusion or reported_pair:
                 return False, None
 
+        prior_decision = await session.scalar(
+            select(InteractionDecisionModel).where(
+                InteractionDecisionModel.actor_id == actor_id,
+                InteractionDecisionModel.target_id == target_id,
+                InteractionDecisionModel.mode == mode,
+            )
+        )
+        is_new_decision = (
+            prior_decision is None or prior_decision.decision != decision
+        )
         values = {
             "actor_id": actor_id,
             "target_id": target_id,
             "mode": mode,
             "decision": decision,
             "message": message,
+            "created_at": now,
         }
-        result = await session.execute(
-            Match._insert_do_nothing(
-                session,
-                InteractionDecisionModel,
-                values,
-                ["actor_id", "target_id", "mode"],
-            )
-        )
-        inserted = result.rowcount == 1
+        if is_new_decision or decision == "pass":
+            await Match._upsert_interaction_decision(session, values)
+        inserted = is_new_decision
         await session.commit()
 
         if decision != "like":
@@ -159,10 +210,11 @@ class Match(BaseService):
                 InteractionDecisionModel.decision == "like",
             )
         )
-        either_passed = await session.scalar(
+        recent_pass = await session.scalar(
             select(InteractionDecisionModel.id).where(
                 InteractionDecisionModel.mode == mode,
                 InteractionDecisionModel.decision == "pass",
+                InteractionDecisionModel.created_at >= pass_cutoff,
                 or_(
                     and_(
                         InteractionDecisionModel.actor_id == actor_id,
@@ -175,7 +227,7 @@ class Match(BaseService):
                 ),
             ).limit(1)
         )
-        if not reciprocal_like or either_passed:
+        if not reciprocal_like or recent_pass:
             return inserted, None
 
         safety_exclusion = await session.scalar(
@@ -245,6 +297,11 @@ class Match(BaseService):
     @staticmethod
     async def inbox_items(session: AsyncSession, user_id: int) -> list[dict]:
         """Return pending Likes and all confirmed matches, across every mode."""
+        from data.config import search as search_config
+
+        pass_cutoff = datetime.now(timezone.utc) - timedelta(
+            days=search_config.REDISCOVERY_COOLDOWN_DAYS
+        )
         passed = aliased(InteractionDecisionModel)
         block = aliased(UserBlockModel)
         report = aliased(ProfileCompleintsModel)
@@ -311,6 +368,7 @@ class Match(BaseService):
                         ),
                         passed.mode == InteractionDecisionModel.mode,
                         passed.decision == "pass",
+                        passed.created_at >= pass_cutoff,
                     )
                 ),
             )
@@ -338,6 +396,7 @@ class Match(BaseService):
                 "mode": match.mode,
                 "kind": "match",
                 "message": None,
+                "created_at": match.created_at,
             }
             for match in matched_rows.scalars()
         )
@@ -462,6 +521,13 @@ class Match(BaseService):
                 ProfileModel.age >= 18,
             )
         )
+        active_decision = or_(
+            InteractionDecisionModel.decision == "like",
+            and_(
+                InteractionDecisionModel.decision == "pass",
+                InteractionDecisionModel.created_at >= cutoff,
+            ),
+        )
         excluded_decision = exists(
             select(InteractionDecisionModel.id).where(
                 InteractionDecisionModel.mode == mode,
@@ -469,14 +535,13 @@ class Match(BaseService):
                     and_(
                         InteractionDecisionModel.actor_id == viewer_id,
                         InteractionDecisionModel.target_id == target_id,
-                        InteractionDecisionModel.decision.in_(("like", "pass")),
                     ),
                     and_(
                         InteractionDecisionModel.actor_id == target_id,
                         InteractionDecisionModel.target_id == viewer_id,
-                        InteractionDecisionModel.decision.in_(("like", "pass")),
                     ),
                 ),
+                active_decision,
             )
         )
         excluded_match = exists(

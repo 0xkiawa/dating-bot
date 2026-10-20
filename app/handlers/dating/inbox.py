@@ -20,6 +20,7 @@ from database.models import UserModel
 from database.models.match import MatchModel, MatchStatus
 from database.services import Match, User
 from loader import bot
+from utils.time import time_ago
 
 
 @dating_router.message(StateFilter(None), F.text == "📭")
@@ -81,15 +82,13 @@ async def _show_inbox_item(message, state, user, session, item: dict) -> None:
         item["mode"], "an earlier mode (unknown)"
     )
     if item["kind"] == "match":
-        label = f"✅ You matched in {mode_label}."
-    elif item["kind"] == "legacy_like":
-        label = f"💌 This Like is from {mode_label}."
-    else:
-        label = f"💌 This Like is from {mode_label}."
-    if item["kind"] == "match":
-        label += "\nYou can contact each other on Telegram now."
+        label = (
+            f"✅ You matched in {mode_label} {time_ago(item.get('created_at'))}.\n"
+            "Contact is shared. Message each other here."
+        )
         await message.answer(label, reply_markup=match_contact_ikb(another_user))
     else:
+        label = f"💌 This Like is from {mode_label}."
         await message.answer(label)
     if item.get("message"):
         await message.answer(mt.MESSAGE_TO_YOU.format(item["message"]))
