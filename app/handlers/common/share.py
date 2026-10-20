@@ -1,5 +1,3 @@
-from urllib.parse import urlencode
-
 from aiogram import F, types
 from aiogram.filters import Command
 from aiogram.filters.state import StateFilter
@@ -30,20 +28,54 @@ CONFIRM_SHARE_TEXT = (
     "profile before they can see you. Your link contains no personal details, and "
     "you can switch it off any time.\n\nCreate your share link?"
 )
-SHARE_MESSAGE = "Meet people on CONQUEER. Open the bot to get started."
+SHARE_MODES = {
+    "fun": ("FUN NOW", "🍆👅🍑💦"),
+    "dates": ("DATES NOW", "❤️🥂"),
+    "friends": ("FRIENDS NOW", "🤝"),
+}
 
 
-def _share_keyboard(link: str | None, active: bool) -> InlineKeyboardMarkup:
+def _share_mode_copy(user: UserModel) -> tuple[str, str]:
+    return SHARE_MODES.get(user.current_mode, ("PROFILE NOW", "🌈"))
+
+
+def _share_message(user: UserModel) -> str:
+    profile = user.profile
+    if not profile:
+        return "Meet people on CONQUEER. Open the bot to get started."
+
+    roles = {"top": "Top", "bottom": "Bottom", "verse": "Verse"}
+    looking_for = {
+        "top": "a Top",
+        "bottom": "a Bottom",
+        "verse": "a Verse",
+        "all": "any role",
+    }
+    mode_text, mode_emojis = _share_mode_copy(user)
+    role_text = roles.get(profile.role, "CONQUEER member")
+    looking_for_text = looking_for.get(profile.find_role, "any role")
+    article = "a " if role_text in {"Top", "Bottom", "Verse"} else ""
+    return (
+        f"Hey :) I'm {article}{role_text}, looking for {mode_text} with "
+        f"{looking_for_text}. Check my profile out! {mode_emojis}"
+    )
+
+
+def _share_card_keyboard(link: str, user: UserModel) -> InlineKeyboardMarkup:
+    mode_text, mode_emojis = _share_mode_copy(user)
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=f"{mode_text} {mode_emojis}", url=link)]
+        ]
+    )
+
+
+def _share_management_keyboard(active: bool) -> InlineKeyboardMarkup:
     rows = []
-    if active and link:
-        share_url = "https://t.me/share/url?" + urlencode(
-            {"url": link, "text": SHARE_MESSAGE}
-        )
-        rows.append([InlineKeyboardButton(text="Share", url=share_url)])
     rows.append(
         [
             InlineKeyboardButton(
-                text="New link" if link else "Create link",
+                text="New link" if active else "Create link",
                 callback_data=ShareLinkCallback(action="reroll").pack(),
             )
         ]
@@ -110,18 +142,25 @@ async def _show_share_setup(
     if link_row.is_enabled:
         url = await create_start_link(bot, link_row.slug)
         text = (
-            f"Your CONQUEER profile link:\n{url}\n\n"
-            "New visitors must accept the Terms. Members who already accepted them can "
-            "open your profile card directly."
+            "Your profile share card is ready. Forward the card below to share a "
+            "short clickable button instead of a long URL."
         )
     else:
         url = None
         text = "Your profile link is off. Create a new link whenever you want to share again."
-    markup = _share_keyboard(url, bool(link_row.is_enabled))
+    active = bool(link_row.is_enabled)
+    markup = _share_management_keyboard(active)
     if edit and isinstance(event, types.CallbackQuery):
         await event.message.edit_text(text, reply_markup=markup, disable_web_page_preview=True)
     else:
         await event.answer(text, reply_markup=markup, disable_web_page_preview=True)
+    if active and url:
+        await bot.send_message(
+            chat_id=user.id,
+            text=_share_message(user),
+            reply_markup=_share_card_keyboard(url, user),
+            disable_web_page_preview=True,
+        )
 
 
 @common_router.message(StateFilter("*"), Command("share"))

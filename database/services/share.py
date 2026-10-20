@@ -30,6 +30,11 @@ REROLL_LIMIT = 3
 REROLL_WINDOW = timedelta(hours=24)
 
 
+def _utc_naive_now() -> datetime:
+    """Return UTC wall time for BaseModel.created_at (timestamp without time zone)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class ShareRerollLimitError(Exception):
     """Raised when an owner has used all allowed link changes for the day."""
 
@@ -67,7 +72,10 @@ def get_share_start_payload(message_text: str | None) -> str | None:
 
 
 async def _cleanup_old_pending(session: AsyncSession) -> None:
-    cutoff = datetime.now(timezone.utc) - PENDING_VIEW_TTL
+    # PendingSharedViewModel.created_at comes from BaseModel and is stored as
+    # TIMESTAMP WITHOUT TIME ZONE in PostgreSQL. Bind a naive UTC value so
+    # asyncpg does not reject an aware datetime for that column.
+    cutoff = _utc_naive_now() - PENDING_VIEW_TTL
     await session.execute(
         update(PendingSharedViewModel)
         .where(
@@ -229,7 +237,7 @@ async def save_pending_shared_view(
 ) -> None:
     """Atomically replace the viewer's pending share click with the latest one."""
     await _cleanup_old_pending(session)
-    now = datetime.now(timezone.utc)
+    now = _utc_naive_now()
     values = {
         "viewer_id": viewer_id,
         "target_id": target_id,
