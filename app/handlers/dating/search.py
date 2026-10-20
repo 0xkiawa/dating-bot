@@ -19,6 +19,7 @@ from app.business.profile_service import (
 )
 from app.filters.kb_filter import ProfileActionCallback
 from app.keyboards.inline.menus import mode_menu_ikb
+from app.keyboards.inline.match_contact import match_contact_ikb
 from app.keyboards.inline.profile_actions import (
     message_cancel_ikb,
     report_confirmation_ikb,
@@ -422,13 +423,22 @@ async def deliver_match_notifications(session: AsyncSession, match_id: int | Non
         mode_label = {"fun": "Fun", "dates": "Dates", "friends": "Friends"}.get(
             match.mode, "previous mode"
         )
+        other_username = (other.username or "").lstrip("@")
+        contact_note = (
+            f"\nTelegram: @{html.escape(other_username)}"
+            if other_username
+            else "\nThey don't have a public Telegram username. The button opens their "
+            "Telegram profile if their privacy settings allow it."
+        )
         try:
             await bot.send_message(
                 chat_id=recipient.id,
                 text=f"🎉 <b>It's a match in {mode_label}!</b>\n\n"
-                f"You and {html.escape(other.profile.name)} liked each other.",
+                f"You and {html.escape(other.profile.name)} liked each other.\n\n"
+                f"You can contact each other on Telegram now.{contact_note}",
                 message_effect_id=EFFECTS_DICTIONARY["🎉"],
                 parse_mode="HTML",
+                reply_markup=match_contact_ikb(other),
             )
             await session.execute(
                 update(MatchNotificationModel)

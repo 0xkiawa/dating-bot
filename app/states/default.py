@@ -38,3 +38,7 @@ class AgeFilter(StatesGroup):
 
 class PhotoPrivacyEdit(StatesGroup):
     selecting = State()
+
+
+class ShareMessageEdit(StatesGroup):
+    message = State()

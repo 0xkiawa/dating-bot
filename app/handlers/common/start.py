@@ -41,7 +41,7 @@ async def start_command(
     if own_share_link_clicked:
         await message.answer(
             "That's your own profile link. Tap 📤 Share profile in the share menu "
-            "to choose someone to send it to, or forward the profile card below."
+            "to choose a chat and send your profile there."
         )
         return
 

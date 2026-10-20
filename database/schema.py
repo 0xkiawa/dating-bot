@@ -68,6 +68,19 @@ def ensure_discovery_delivery_source_column(connection) -> None:
         )
 
 
+def ensure_share_message_column(connection) -> None:
+    """Add customizable share text to share links created by older releases."""
+    if "share_links" not in set(inspect(connection).get_table_names()):
+        return
+    columns = {
+        column["name"] for column in inspect(connection).get_columns("share_links")
+    }
+    if "share_message" not in columns:
+        connection.execute(
+            text("ALTER TABLE share_links ADD COLUMN share_message VARCHAR(1000)")
+        )
+
+
 def backfill_legacy_pair_matches(connection) -> None:
     """Expose accepted pre-migration Likes as matches with an explicit mode."""
     tables = set(inspect(connection).get_table_names())

@@ -4,15 +4,22 @@ from aiogram import F, types
 from aiogram.filters import Command
 from aiogram.filters.state import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InlineQueryResultArticle,
+    InputTextMessageContent,
+)
 from aiogram.utils.deep_linking import create_start_link
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.filters.kb_filter import MainMenuCallback, ShareLinkCallback
+from app.consent import has_current_consent
 from app.routers import common_router
-from app.states.default import Search
+from app.states.default import Search, ShareMessageEdit
 from database.models import UserModel
 from database.models.share import ShareLinkModel
+from database.services.user import User
 from database.services.share import (
     ShareRerollLimitError,
     consume_pending_shared_view,
@@ -41,7 +48,7 @@ def _share_mode_copy(user: UserModel) -> tuple[str, str]:
     return SHARE_MODES.get(user.current_mode, ("PROFILE NOW", "🌈"))
 
 
-def _share_message(user: UserModel) -> str:
+def _default_share_message(user: UserModel) -> str:
     profile = user.profile
     if not profile:
         return "Meet people on CONQUEER. Open the bot to get started."
@@ -63,6 +70,10 @@ def _share_message(user: UserModel) -> str:
     )
 
 
+def _share_message(user: UserModel, link_row: ShareLinkModel) -> str:
+    return link_row.share_message or _default_share_message(user)
+
+
 def _share_card_keyboard(link: str, user: UserModel) -> InlineKeyboardMarkup:
     mode_text, mode_emojis = _share_mode_copy(user)
     return InlineKeyboardMarkup(
@@ -73,13 +84,39 @@ def _share_card_keyboard(link: str, user: UserModel) -> InlineKeyboardMarkup:
 
 
 def _share_management_keyboard(
-    active: bool, telegram_share_url: str | None
+    *,
+    active: bool,
+    telegram_share_url: str | None = None,
+    inline_query: str | None = None,
+    has_custom_message: bool = False,
 ) -> InlineKeyboardMarkup:
     rows = []
-    if active and telegram_share_url:
+    if active and inline_query:
+        rows.append(
+            [InlineKeyboardButton(text="📤 Share profile", switch_inline_query=inline_query)]
+        )
+    elif active and telegram_share_url:
         rows.append(
             [InlineKeyboardButton(text="📤 Share profile", url=telegram_share_url)]
         )
+    if active:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="Edit share message",
+                    callback_data=ShareLinkCallback(action="edit_message").pack(),
+                )
+            ]
+        )
+        if has_custom_message:
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text="Reset message to default",
+                        callback_data=ShareLinkCallback(action="reset_message").pack(),
+                    )
+                ]
+            )
     rows.append(
         [
             InlineKeyboardButton(
@@ -148,35 +185,41 @@ async def _show_share_setup(
         return
 
     if link_row.is_enabled:
-        url = await create_start_link(bot, link_row.slug)
-        mode_text = _share_mode_copy(user)[0]
-        text = (
-            "To choose a chat and send your caption with the profile link, tap "
-            "📤 Share profile. To send the short clickable button instead, forward "
-            f"the card below. The {mode_text} button opens your profile; it does "
-            "not start sharing when you tap it here. Recipients can Like or Pass "
-            "after opening your profile."
-        )
-        telegram_share_url = "https://t.me/share/url?" + urlencode(
-            {"url": url, "text": _share_message(user)}
-        )
+        inline_enabled = bool((await bot.get_me()).supports_inline_queries)
+        if inline_enabled:
+            inline_query = link_row.slug
+            telegram_share_url = None
+            text = (
+                "Tap 📤 Share profile, choose a chat, then select the share result. "
+                "The recipient gets your caption and a clickable mode button. The "
+                "caption and button are not posted in this bot chat."
+            )
+        else:
+            inline_query = None
+            url = await create_start_link(bot, link_row.slug)
+            telegram_share_url = "https://t.me/share/url?" + urlencode(
+                {"url": url, "text": _share_message(user, link_row)}
+            )
+            text = (
+                "Tap 📤 Share profile to send your caption and profile link. To send "
+                "a short clickable mode button with the caption, inline mode must "
+                "be enabled for this bot in @BotFather."
+            )
     else:
-        url = None
+        inline_query = None
         telegram_share_url = None
         text = "Your profile link is off. Create a new link whenever you want to share again."
     active = bool(link_row.is_enabled)
-    markup = _share_management_keyboard(active, telegram_share_url)
+    markup = _share_management_keyboard(
+        active=active,
+        telegram_share_url=telegram_share_url,
+        inline_query=inline_query,
+        has_custom_message=bool(link_row.share_message),
+    )
     if edit and isinstance(event, types.CallbackQuery):
         await event.message.edit_text(text, reply_markup=markup, disable_web_page_preview=True)
     else:
         await event.answer(text, reply_markup=markup, disable_web_page_preview=True)
-    if active and url:
-        await bot.send_message(
-            chat_id=user.id,
-            text=_share_message(user),
-            reply_markup=_share_card_keyboard(url, user),
-            disable_web_page_preview=True,
-        )
 
 
 @common_router.message(StateFilter("*"), Command("share"))
@@ -193,6 +236,130 @@ async def share_profile_from_menu(
 ) -> None:
     await callback.answer()
     await _show_share_setup(callback, user, session, edit=True)
+
+
+@common_router.inline_query()
+async def share_profile_inline_query(
+    inline_query: types.InlineQuery, session: AsyncSession
+) -> None:
+    """Send the caption and compact profile button directly into the chosen chat."""
+    link_row = await session.get(ShareLinkModel, inline_query.from_user.id)
+    owner = await User.get_with_profile(session, inline_query.from_user.id)
+    if (
+        not link_row
+        or not link_row.is_enabled
+        or link_row.slug != inline_query.query.strip()
+        or not owner
+        or not has_current_consent(owner)
+        or owner.status == 0
+        or not owner.profile
+        or not owner.profile.is_active
+        or owner.profile.age < 18
+        or owner.current_mode not in SHARE_MODES
+    ):
+        await inline_query.answer([], cache_time=0, is_personal=True)
+        return
+
+    profile_url = await create_start_link(bot, link_row.slug)
+    result = InlineQueryResultArticle(
+        id=link_row.slug,
+        title="Share my CONQUEER profile",
+        description="Send your saved caption with a clickable mode button.",
+        input_message_content=InputTextMessageContent(
+            message_text=_share_message(owner, link_row),
+            parse_mode=None,
+        ),
+        reply_markup=_share_card_keyboard(profile_url, owner),
+    )
+    await inline_query.answer([result], cache_time=0, is_personal=True)
+
+
+@common_router.callback_query(ShareLinkCallback.filter(F.action == "edit_message"))
+async def start_share_message_edit(
+    callback: types.CallbackQuery,
+    user: UserModel,
+    session: AsyncSession,
+    state: FSMContext,
+) -> None:
+    await callback.answer()
+    link_row = await session.get(ShareLinkModel, user.id)
+    if not link_row or not link_row.is_enabled:
+        await _show_share_setup(callback, user, session, edit=True)
+        return
+    await state.set_state(ShareMessageEdit.message)
+    await callback.message.edit_text(
+        "Send the custom caption you want recipients to see (up to 1000 characters). "
+        "Your current default or custom caption stays hidden here. Use /cancel to stop editing.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Cancel",
+                        callback_data=ShareLinkCallback(action="cancel_message_edit").pack(),
+                    )
+                ]
+            ]
+        ),
+    )
+
+
+@common_router.callback_query(
+    ShareLinkCallback.filter(F.action == "cancel_message_edit")
+)
+async def cancel_share_message_edit(
+    callback: types.CallbackQuery,
+    user: UserModel,
+    session: AsyncSession,
+    state: FSMContext,
+) -> None:
+    await callback.answer()
+    await state.clear()
+    await _show_share_setup(callback, user, session, edit=True)
+
+
+@common_router.callback_query(ShareLinkCallback.filter(F.action == "reset_message"))
+async def reset_share_message(
+    callback: types.CallbackQuery,
+    user: UserModel,
+    session: AsyncSession,
+    state: FSMContext,
+) -> None:
+    await callback.answer()
+    link_row = await session.get(ShareLinkModel, user.id)
+    if link_row:
+        link_row.share_message = None
+        await session.commit()
+    await state.clear()
+    await _show_share_setup(callback, user, session, edit=True)
+
+
+@common_router.message(
+    StateFilter(ShareMessageEdit.message), F.text & ~F.text.startswith("/")
+)
+async def save_custom_share_message(
+    message: types.Message,
+    user: UserModel,
+    session: AsyncSession,
+    state: FSMContext,
+) -> None:
+    custom_message = (message.text or "").strip()
+    if not custom_message:
+        await message.answer("Send a message with at least one character.")
+        return
+    if len(custom_message) > 1000:
+        await message.answer("Keep your share message to 1000 characters or fewer.")
+        return
+
+    link_row = await session.get(ShareLinkModel, user.id)
+    if not link_row or not link_row.is_enabled:
+        await state.clear()
+        await message.answer("Your share link is off. Create a new link before editing its message.")
+        return
+    link_row.share_message = custom_message
+    await session.commit()
+    await state.clear()
+    await message.answer("Your custom share message is saved and will be sent to recipients.")
+    await _show_share_setup(message, user, session)
 
 
 @common_router.callback_query(ShareLinkCallback.filter(F.action == "confirm"))

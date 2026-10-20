@@ -12,12 +12,13 @@ from app.constans import EFFECTS_DICTIONARY
 from app.keyboards.default.base import match_kb
 from app.keyboards.default.compleint import compleint_kb
 from app.keyboards.inline.menus import mode_menu_ikb
+from app.keyboards.inline.match_contact import match_contact_ikb
 from app.routers import dating_router
 from app.states.default import LikeResponse
 from app.text import message_text as mt
 from database.models import UserModel
 from database.models.match import MatchModel, MatchStatus
-from database.services import Match, Profile, User
+from database.services import Match, User
 from loader import bot
 
 
@@ -67,12 +68,12 @@ async def _match_atchive_callback(
 
 
 async def _show_inbox_item(message, state, user, session, item: dict) -> None:
-    profile = await Profile.get(session, item["user_id"])
-    if not profile:
+    another_user = await User.get_with_profile(session, item["user_id"])
+    if not another_user or not another_user.profile:
         return
     await send_profile_with_dist(
         user=user,
-        profile=profile,
+        profile=another_user.profile,
         session=session,
         mode=item["mode"] if item["mode"] != "legacy" else None,
     )
@@ -85,7 +86,11 @@ async def _show_inbox_item(message, state, user, session, item: dict) -> None:
         label = f"💌 This Like is from {mode_label}."
     else:
         label = f"💌 This Like is from {mode_label}."
-    await message.answer(label)
+    if item["kind"] == "match":
+        label += "\nYou can contact each other on Telegram now."
+        await message.answer(label, reply_markup=match_contact_ikb(another_user))
+    else:
+        await message.answer(label)
     if item.get("message"):
         await message.answer(mt.MESSAGE_TO_YOU.format(item["message"]))
 

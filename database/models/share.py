@@ -35,6 +35,7 @@ class ShareLinkModel(BaseModel):
     reroll_window_started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    share_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
     __table_args__ = (UniqueConstraint("slug", name="uq_share_links_slug"),)
 

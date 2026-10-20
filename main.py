@@ -23,6 +23,7 @@ async def create_tables():
             ensure_discovery_delivery_source_column,
             ensure_mode_aware_matching_columns,
             ensure_profile_match_columns,
+            ensure_share_message_column,
             ensure_user_consent_columns,
         )
         from sqlalchemy import update
@@ -37,6 +38,7 @@ async def create_tables():
             await conn.run_sync(ensure_user_consent_columns)
             await conn.run_sync(ensure_mode_aware_matching_columns)
             await conn.run_sync(ensure_discovery_delivery_source_column)
+            await conn.run_sync(ensure_share_message_column)
             await conn.run_sync(backfill_legacy_pair_matches)
         logger.log("BOT", "✅ Tables created successfully!")
         
