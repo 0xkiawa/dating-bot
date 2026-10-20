@@ -141,9 +141,11 @@ async def _show_share_setup(
 
     if link_row.is_enabled:
         url = await create_start_link(bot, link_row.slug)
+        mode_text = _share_mode_copy(user)[0]
         text = (
-            "Your profile share card is ready. Forward the card below to share a "
-            "short clickable button instead of a long URL."
+            "Your profile share card is ready. Forward the card below. The person "
+            f"who receives it will see your caption and a clickable {mode_text} "
+            "button; tapping it opens your profile, where they can Like or Pass."
         )
     else:
         url = None
