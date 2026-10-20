@@ -27,6 +27,7 @@ async def start_command(
     user: UserModel,
     state: FSMContext,
     session: AsyncSession,
+    own_share_link_clicked: bool = False,
 ) -> None:
     """
     Команда /start запускает бота и возвращает пользователя в начальное меню.
@@ -36,6 +37,13 @@ async def start_command(
     Browse and Inbox are now only accessible from mode menus (/fun, /dates, /friends)
     """
     await state.clear()
+
+    if own_share_link_clicked:
+        await message.answer(
+            "That's your own profile link. Tap 📤 Share profile in the share menu "
+            "to choose someone to send it to, or forward the profile card below."
+        )
+        return
 
     if user.profile:
         if await deliver_pending_share_to_existing_member(

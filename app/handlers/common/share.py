@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 from aiogram import F, types
 from aiogram.filters import Command
 from aiogram.filters.state import StateFilter
@@ -70,8 +72,14 @@ def _share_card_keyboard(link: str, user: UserModel) -> InlineKeyboardMarkup:
     )
 
 
-def _share_management_keyboard(active: bool) -> InlineKeyboardMarkup:
+def _share_management_keyboard(
+    active: bool, telegram_share_url: str | None
+) -> InlineKeyboardMarkup:
     rows = []
+    if active and telegram_share_url:
+        rows.append(
+            [InlineKeyboardButton(text="📤 Share profile", url=telegram_share_url)]
+        )
     rows.append(
         [
             InlineKeyboardButton(
@@ -143,15 +151,21 @@ async def _show_share_setup(
         url = await create_start_link(bot, link_row.slug)
         mode_text = _share_mode_copy(user)[0]
         text = (
-            "Your profile share card is ready. Forward the card below. The person "
-            f"who receives it will see your caption and a clickable {mode_text} "
-            "button; tapping it opens your profile, where they can Like or Pass."
+            "To choose a chat and send your caption with the profile link, tap "
+            "📤 Share profile. To send the short clickable button instead, forward "
+            f"the card below. The {mode_text} button opens your profile; it does "
+            "not start sharing when you tap it here. Recipients can Like or Pass "
+            "after opening your profile."
+        )
+        telegram_share_url = "https://t.me/share/url?" + urlencode(
+            {"url": url, "text": _share_message(user)}
         )
     else:
         url = None
+        telegram_share_url = None
         text = "Your profile link is off. Create a new link whenever you want to share again."
     active = bool(link_row.is_enabled)
-    markup = _share_management_keyboard(active)
+    markup = _share_management_keyboard(active, telegram_share_url)
     if edit and isinstance(event, types.CallbackQuery):
         await event.message.edit_text(text, reply_markup=markup, disable_web_page_preview=True)
     else:

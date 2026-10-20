@@ -80,7 +80,9 @@ class CommonMiddleware(BaseMiddleware):
             share_payload = get_share_start_payload(message.text)
             if share_payload:
                 target = await resolve_share_slug(session, share_payload)
-                if target and target.id != user.id:
+                if target and target.id == user.id:
+                    data["own_share_link_clicked"] = True
+                elif target:
                     await save_pending_shared_view(session, user.id, target.id)
 
         data["user"] = user
