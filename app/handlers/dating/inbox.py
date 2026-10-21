@@ -85,10 +85,13 @@ async def _show_inbox_item(message, state, user, session, item: dict) -> None:
         matched_with = another_user.profile.name
         elapsed = time_ago(item.get("created_at"))
         if mode_label:
-            label = f"✅ You matched with {matched_with} in {mode_label} mode {elapsed}.\n"
+            label = (
+                f"🎉💖 You matched with {matched_with} in {mode_label} mode "
+                f"{elapsed}. 💖🎉\n"
+            )
         else:
             label = (
-                f"✅ You matched with {matched_with} {elapsed}.\n"
+                f"🎉💖 You matched with {matched_with} {elapsed}. 💖🎉\n"
                 "The mode wasn't recorded for this older match.\n"
             )
         label += "Tap below to open their Telegram profile and start chatting."

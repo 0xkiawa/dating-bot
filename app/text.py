@@ -308,7 +308,8 @@ Want to come back? Just send /start to reactivate!
             mode, "an earlier mode"
         )
         return _(
-            "🎉 <b>It's a match in {mode}!</b>\n\nGo conquer together: <a href='{{}}'>{{}}</a>",
+            "🎉💖 <b>It's a match in {mode}!</b> 💖🎉\n\n"
+            "Go conquer together: <a href='{{}}'>{{}}</a>",
             locale=normalize_locale(language),
         ).format(mode=mode_label)
 

@@ -430,13 +430,13 @@ async def deliver_match_notifications(session: AsyncSession, match_id: int | Non
             "Telegram profile if their privacy settings allow it."
         )
         if mode_label:
-            match_heading = f"🎉 <b>It's a match in {mode_label}!</b>"
+            match_heading = f"🎉💖 <b>It's a match in {mode_label}!</b> 💖🎉"
             match_details = (
                 f"You matched with {html.escape(other.profile.name)} "
                 f"{time_ago(match.created_at)}."
             )
         else:
-            match_heading = "🎉 <b>It's a match!</b>"
+            match_heading = "🎉💖 <b>It's a match!</b> 💖🎉"
             match_details = (
                 f"You matched with {html.escape(other.profile.name)} "
                 f"{time_ago(match.created_at)}.\n"
