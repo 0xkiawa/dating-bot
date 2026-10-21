@@ -422,15 +422,19 @@ class Match(BaseService):
 
     @staticmethod
     async def record_legacy_match(
-        session: AsyncSession, first_user_id: int, second_user_id: int
+        session: AsyncSession,
+        first_user_id: int,
+        second_user_id: int,
+        mode: str | None = None,
     ) -> int | None:
-        """Keep a reciprocated pre-migration Like available with unknown mode."""
+        """Keep a reciprocated legacy Like available, preserving its mode when known."""
+        match_mode = mode if mode in {"fun", "dates", "friends"} else "legacy"
         low_id, high_id = sorted((first_user_id, second_user_id))
         result = await session.execute(
             Match._insert_do_nothing(
                 session,
                 PairMatchModel,
-                {"user_low_id": low_id, "user_high_id": high_id, "mode": "legacy"},
+                {"user_low_id": low_id, "user_high_id": high_id, "mode": match_mode},
                 ["user_low_id", "user_high_id", "mode"],
             )
         )
@@ -438,7 +442,7 @@ class Match(BaseService):
             select(PairMatchModel).where(
                 PairMatchModel.user_low_id == low_id,
                 PairMatchModel.user_high_id == high_id,
-                PairMatchModel.mode == "legacy",
+                PairMatchModel.mode == match_mode,
             )
         )
         if pair_match and result.rowcount == 1:
@@ -476,6 +480,7 @@ class Match(BaseService):
 
         now = datetime.now(timezone.utc)
         cutoff = now - timedelta(days=search.REDISCOVERY_COOLDOWN_DAYS)
+        shared_cutoff = now - timedelta(days=search.SHARED_DELIVERY_COOLDOWN_DAYS)
         stale_reservation = now - timedelta(minutes=search.DELIVERY_RESERVATION_MINUTES)
         token = str(uuid4())
 
@@ -564,8 +569,7 @@ class Match(BaseService):
                     ),
                     and_(
                         DiscoveryDeliveryEventModel.source == "shared",
-                        DiscoveryDeliveryEventModel.delivered_at
-                        >= now - timedelta(days=21),
+                        DiscoveryDeliveryEventModel.delivered_at >= shared_cutoff,
                     ),
                 ),
             )
@@ -577,7 +581,7 @@ class Match(BaseService):
                 DiscoveryDeliveryEventModel.mode == mode,
                 DiscoveryDeliveryEventModel.status == "delivered",
                 DiscoveryDeliveryEventModel.source == "shared",
-                DiscoveryDeliveryEventModel.delivered_at >= now - timedelta(days=21),
+                DiscoveryDeliveryEventModel.delivered_at >= shared_cutoff,
             )
         )
         legacy_exclusion = exists(

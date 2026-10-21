@@ -421,9 +421,7 @@ async def deliver_match_notifications(session: AsyncSession, match_id: int | Non
         other = await User.get_with_profile(session, other_id)
         if not recipient or not other or not other.profile:
             continue
-        mode_label = {"fun": "Fun", "dates": "Dates", "friends": "Friends"}.get(
-            match.mode, "previous mode"
-        )
+        mode_label = {"fun": "Fun", "dates": "Dates", "friends": "Friends"}.get(match.mode)
         other_username = (other.username or "").lstrip("@")
         contact_note = (
             f"\nTelegram: @{html.escape(other_username)}"
@@ -431,13 +429,24 @@ async def deliver_match_notifications(session: AsyncSession, match_id: int | Non
             else "\nThey don't have a public Telegram username. The button opens their "
             "Telegram profile if their privacy settings allow it."
         )
+        if mode_label:
+            match_heading = f"🎉 <b>It's a match in {mode_label}!</b>"
+            match_details = (
+                f"You matched with {html.escape(other.profile.name)} "
+                f"{time_ago(match.created_at)}."
+            )
+        else:
+            match_heading = "🎉 <b>It's a match!</b>"
+            match_details = (
+                f"You matched with {html.escape(other.profile.name)} "
+                f"{time_ago(match.created_at)}.\n"
+                "The mode wasn't recorded for this older match."
+            )
         try:
             await bot.send_message(
                 chat_id=recipient.id,
-                text=f"🎉 <b>It's a match in {mode_label}!</b>\n\n"
-                f"You matched with {html.escape(other.profile.name)} "
-                f"{time_ago(match.created_at)}.\n\n"
-                f"Contact is shared—message each other here.{contact_note}",
+                text=f"{match_heading}\n\n{match_details}\n\n"
+                f"Tap the button below to open their Telegram profile and chat.{contact_note}",
                 message_effect_id=EFFECTS_DICTIONARY["🎉"],
                 parse_mode="HTML",
                 reply_markup=match_contact_ikb(other),

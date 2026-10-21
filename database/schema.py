@@ -52,7 +52,7 @@ def ensure_mode_aware_matching_columns(connection) -> None:
 
 
 def ensure_discovery_delivery_source_column(connection) -> None:
-    """Tag shared-card deliveries so discovery honors their 21-day cooldown."""
+    """Tag shared-card deliveries so discovery applies the configured cooldown."""
     if "discovery_delivery_events" not in set(inspect(connection).get_table_names()):
         return
     columns = {

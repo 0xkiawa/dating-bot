@@ -13,6 +13,7 @@ from aiogram.types import Chat, Message, User as TelegramUser
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from data.config import search
 import database.models  # noqa: F401
 from database.models.base import BaseModel
 from database.models.share import PendingSharedViewModel, ShareLinkModel
@@ -227,7 +228,7 @@ class ShareLinkTests(unittest.IsolatedAsyncioTestCase):
             await session.commit()
             self.assertIsNone(await shared_target_is_eligible(session, 101, 202))
 
-    async def test_shared_delivery_can_override_old_passes_and_has_long_cooldown(self):
+    async def test_shared_delivery_uses_the_rediscovery_cooldown(self):
         async with self.sessions() as session:
             await Match.record_decision(session, 101, 202, "fun", "pass")
             token = await Match.reserve_delivery(
@@ -238,10 +239,8 @@ class ShareLinkTests(unittest.IsolatedAsyncioTestCase):
 
             event = await session.scalar(select(DiscoveryDeliveryEventModel))
             self.assertEqual("shared", event.source)
-            old_delivery = datetime.now(UTC) - timedelta(days=10)
-            event.delivered_at = old_delivery
-            cursor = await session.scalar(select(DiscoveryDeliveryCursorModel))
-            cursor.latest_delivered_at = old_delivery
+            self.assertEqual(4, search.REDISCOVERY_COOLDOWN_DAYS)
+            self.assertEqual(4, search.SHARED_DELIVERY_COOLDOWN_DAYS)
             decision = await session.scalar(select(InteractionDecisionModel))
             await session.delete(decision)
             viewer = await session.get(UserModel, 101)
@@ -249,6 +248,17 @@ class ShareLinkTests(unittest.IsolatedAsyncioTestCase):
             await session.commit()
 
             self.assertIsNone(await Match.reserve_delivery(session, 101, 202, "fun"))
+
+            event = await session.scalar(select(DiscoveryDeliveryEventModel))
+            cursor = await session.scalar(select(DiscoveryDeliveryCursorModel))
+            old_delivery = datetime.now(UTC) - timedelta(
+                days=search.SHARED_DELIVERY_COOLDOWN_DAYS + 1
+            )
+            event.delivered_at = old_delivery
+            cursor.latest_delivered_at = old_delivery
+            await session.commit()
+
+            self.assertIsNotNone(await Match.reserve_delivery(session, 101, 202, "fun"))
 
 
 if __name__ == "__main__":

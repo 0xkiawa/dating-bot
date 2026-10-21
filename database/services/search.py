@@ -184,6 +184,9 @@ async def search_profiles(
     cooldown_cutoff = datetime.now(timezone.utc) - timedelta(
         days=search.REDISCOVERY_COOLDOWN_DAYS
     )
+    shared_cooldown_cutoff = datetime.now(timezone.utc) - timedelta(
+        days=search.SHARED_DELIVERY_COOLDOWN_DAYS
+    )
     active_decision = or_(
         InteractionDecisionModel.decision == "like",
         and_(
@@ -224,8 +227,7 @@ async def search_profiles(
             ),
             and_(
                 DiscoveryDeliveryEventModel.source == "shared",
-                DiscoveryDeliveryEventModel.delivered_at
-                > datetime.now(timezone.utc) - timedelta(days=21),
+                DiscoveryDeliveryEventModel.delivered_at > shared_cooldown_cutoff,
             ),
         ),
     )

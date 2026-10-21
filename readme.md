@@ -136,8 +136,8 @@ interaction rows are retained and labeled `legacy` when their original mode
 was not recorded. This migration is intentionally irreversible so it cannot
 delete interaction history.
 
-Set `REDISCOVERY_COOLDOWN_DAYS` to change the same-mode rediscovery cooldown
-(default: `4`).
+Same-mode rediscovery, including shared-profile deliveries, uses a four-day
+cooldown.
 
 
 #### Redis

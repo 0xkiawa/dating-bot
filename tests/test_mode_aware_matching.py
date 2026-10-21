@@ -227,6 +227,15 @@ class ModeAwareMatchingTests(unittest.IsolatedAsyncioTestCase):
             items = await Match.inbox_items(session, 101)
             self.assertEqual([("match", "fun")], [(item["kind"], item["mode"]) for item in items])
 
+    async def test_accepted_legacy_like_keeps_its_recorded_mode(self):
+        async with self.sessions() as session:
+            match_id = await Match.record_legacy_match(session, 101, 202, mode="dates")
+            match = await session.get(PairMatchModel, match_id)
+            self.assertEqual("dates", match.mode)
+
+            items = await Match.inbox_items(session, 101)
+            self.assertEqual("dates", items[0]["mode"])
+
     async def test_pending_like_is_not_a_rediscovery_timer(self):
         async with self.sessions() as session:
             await Match.record_decision(session, 101, 202, "fun", "like")

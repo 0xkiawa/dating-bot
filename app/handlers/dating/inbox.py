@@ -79,16 +79,22 @@ async def _show_inbox_item(message, state, user, session, item: dict) -> None:
         mode=item["mode"] if item["mode"] != "legacy" else None,
     )
     mode_label = {"fun": "Fun", "dates": "Dates", "friends": "Friends"}.get(
-        item["mode"], "an earlier mode (unknown)"
+        item["mode"]
     )
     if item["kind"] == "match":
-        label = (
-            f"✅ You matched in {mode_label} {time_ago(item.get('created_at'))}.\n"
-            "Contact is shared. Message each other here."
-        )
+        matched_with = another_user.profile.name
+        elapsed = time_ago(item.get("created_at"))
+        if mode_label:
+            label = f"✅ You matched with {matched_with} in {mode_label} mode {elapsed}.\n"
+        else:
+            label = (
+                f"✅ You matched with {matched_with} {elapsed}.\n"
+                "The mode wasn't recorded for this older match.\n"
+            )
+        label += "Tap below to open their Telegram profile and start chatting."
         await message.answer(label, reply_markup=match_contact_ikb(another_user))
     else:
-        label = f"💌 This Like is from {mode_label}."
+        label = f"💌 This Like is from {mode_label or 'an earlier mode not recorded'}."
         await message.answer(label)
     if item.get("message"):
         await message.answer(mt.MESSAGE_TO_YOU.format(item["message"]))
@@ -137,7 +143,7 @@ async def _match_response(
                     is_active=False,
                 )
                 legacy_match_id = await Match.record_legacy_match(
-                    session, user.id, another_user.id
+                    session, user.id, another_user.id, mode=mode
                 )
                 from app.handlers.dating.search import deliver_match_notifications
 
